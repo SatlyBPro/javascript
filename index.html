@@ -1101,9 +1101,10 @@ console.log('done in', performance.now().toFixed(2) + 'ms');
   }
 
   document.getElementById('clear-btn').addEventListener('click', ()=>{
-    clearConsole();
-    runTimeEl.textContent = '';
-    showToast('Console cleared');
+    codeEl.value = '';
+    autoClosedPositions = new Set();
+    updateHighlight(); updateGutter(); syncScroll(); updateScrollNeed(); saveCode();
+    showToast('Editor cleared');
   });
 
   // ---------- execution via sandboxed iframe ----------
