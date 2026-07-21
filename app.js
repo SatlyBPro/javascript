@@ -1007,17 +1007,21 @@ console.log(user);
     };
 
     // Monaco's getTargetAtClientPoint always clamps to the nearest valid
-    // document position, even when the tap lands well below the last line
-    // or past the end of a line, in empty space. That clamped position can
-    // equal the current cursor position, which used to be misread as "tap
-    // landed exactly on the existing cursor" and popped Select All/Paste
-    // for a tap that hit nothing at all. Checking target.type filters that
-    // out: only these types mean the tap actually hit real text content.
-    const isTapOnRealContent = (touch) => {
-      const target = editor.getTargetAtClientPoint(touch.clientX, touch.clientY);
-      if (!target) return false;
-      const t = window.monaco.editor.MouseTargetType;
-      return target.type === t.CONTENT_TEXT || target.type === t.CONTENT_EMPTY;
+    // document position, both horizontally (past end of a line) and
+    // vertically (below the last line, or above the first). That means a
+    // tap well below a single line of code can still resolve to that same
+    // line/column as the cursor, even though the tap visually landed
+    // nowhere near that row. Checking target.position.lineNumber alone
+    // doesn't catch this, since it's the clamped value. Instead we check
+    // the tap's actual Y coordinate against the pixel bounds of the
+    // cursor's line, using the editor's own row geometry, so only a tap
+    // that visually falls within that row counts as "on the cursor's row."
+    const isTouchYInLineRow = (touch, lineNumber) => {
+      const domRect = domNode.getBoundingClientRect();
+      const contentTop = domRect.top + editor.getTopForLineNumber(lineNumber) - editor.getScrollTop();
+      const lineHeight = editor.getOption(window.monaco.editor.EditorOption.lineHeight);
+      const y = touch.clientY;
+      return y >= contentTop && y < contentTop + lineHeight;
     };
 
     domNode.addEventListener("touchstart", (e) => {
@@ -1049,18 +1053,21 @@ console.log(user);
         // Tapping exactly where the cursor already is (editor focused,
         // cursor visibly blinking there, nothing currently selected) opens
         // the menu directly with no selection change — Select All/Paste.
-        // This requires an EXACT position match: if the tap resolves to
-        // any different column, it just moves the cursor there like a
-        // normal tap and the menu does not open.
+        // This requires an EXACT column match on the cursor's line, AND
+        // the tap must visually land within that line's row (not just
+        // resolve there via Monaco's position clamping). A tap below the
+        // cursor's row just moves the cursor to the clamped position, same
+        // as before, and the menu does not open.
         let isTapOnExistingCursor = false;
-        if (!isDoubleTap && editor.hasTextFocus() && isTapOnRealContent(touch)) {
+        if (!isDoubleTap && editor.hasTextFocus()) {
           const pos = posFromTouch(touch);
           const cursorPos = editor.getPosition();
           const selection = editor.getSelection();
           if (
             pos && cursorPos && selection && selection.isEmpty() &&
             pos.lineNumber === cursorPos.lineNumber &&
-            pos.column === cursorPos.column
+            pos.column === cursorPos.column &&
+            isTouchYInLineRow(touch, cursorPos.lineNumber)
           ) {
             isTapOnExistingCursor = true;
           }
