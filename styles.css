@@ -19,6 +19,7 @@
   --purple: #c586c0;
   --radius: 6px;
   --topbar-h: 48px;
+  --safe-top: env(safe-area-inset-top, 0px);
   --mobile-toolbar-h: 46px;
   --popover-bg: #2b2b2b;
   --popover-shadow: #00000066;
@@ -112,13 +113,13 @@ body {
 /* ---------- Top bar ---------- */
 
 .topbar {
-  height: var(--topbar-h);
-  min-height: var(--topbar-h);
+  height: calc(var(--topbar-h) + var(--safe-top));
+  min-height: calc(var(--topbar-h) + var(--safe-top));
   display: flex;
   align-items: center;
   background: var(--bg-topbar);
   border-bottom: 1px solid var(--border);
-  padding: 0 8px;
+  padding: var(--safe-top) 8px 0;
   gap: 8px;
   -webkit-user-select: none;
   user-select: none;
@@ -470,28 +471,13 @@ body {
   flex: 0 0 auto;
   font-size: 16px;
   color: var(--text-dim);
-  touch-action: none;
-}
-.mkey-space.active-trackpad {
-  background: var(--accent);
-  color: #fff;
-}
-
-/* Shown while a hold-and-drag cursor gesture is active (either from the
-   caret itself or the on-screen space key), as a subtle confirmation
-   that touch input is being read as cursor movement rather than scroll. */
-.touch-cursor-dragging {
-  cursor: grabbing;
-}
-.touch-cursor-dragging .cursor {
-  box-shadow: 0 0 0 3px var(--accent-hover);
 }
 
 /* ---------- Popovers ---------- */
 
 .popover {
   position: absolute;
-  top: calc(var(--topbar-h) + 6px);
+  top: calc(var(--topbar-h) + var(--safe-top) + 6px);
   right: 8px;
   background: var(--popover-bg);
   border: 1px solid var(--border);
@@ -626,9 +612,9 @@ body {
   :root { --topbar-h-touch: 56px; }
 
   .topbar {
-    height: var(--topbar-h-touch);
-    min-height: var(--topbar-h-touch);
-    padding: 0 10px;
+    height: calc(var(--topbar-h-touch) + var(--safe-top));
+    min-height: calc(var(--topbar-h-touch) + var(--safe-top));
+    padding: var(--safe-top) 10px 0;
     gap: 8px;
   }
 
@@ -660,7 +646,7 @@ body {
   .file-tab .tab-close svg { width: 13px; height: 13px; }
   .file-tab .tab-dot { width: 7px; height: 7px; }
 
-  .popover { top: calc(var(--topbar-h-touch) + 6px); min-width: 260px; padding: 16px; }
+  .popover { top: calc(var(--topbar-h-touch) + var(--safe-top) + 6px); min-width: 260px; padding: 16px; }
   .popover-row { font-size: 14px; padding: 9px 2px; }
   .popover-row input[type="checkbox"] { width: 20px; height: 20px; }
   .popover-confirm { padding: 10px; font-size: 14px; }
@@ -684,7 +670,7 @@ body {
 }
 
 @media (max-width: 760px) {
-  .topbar { padding: 0 6px; gap: 4px; }
+  .topbar { padding: var(--safe-top) 6px 0; gap: 4px; }
   .run-btn span { display: none; }
   .run-btn { padding: 0 10px; gap: 0; }
   .file-tab { max-width: 120px; }
