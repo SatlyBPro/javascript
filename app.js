@@ -1035,8 +1035,9 @@ console.log(user);
         // Tapping exactly where the cursor already is (editor focused,
         // cursor visibly blinking there, nothing currently selected) opens
         // the menu directly with no selection change — Select All/Paste.
-        // A small column tolerance is used since a fingertip rarely lands
-        // on the exact character column even when visually "on" the cursor.
+        // This requires an EXACT position match: if the tap resolves to
+        // any different column, it just moves the cursor there like a
+        // normal tap and the menu does not open.
         let isTapOnExistingCursor = false;
         if (!isDoubleTap && editor.hasTextFocus()) {
           const pos = posFromTouch(touch);
@@ -1045,7 +1046,7 @@ console.log(user);
           if (
             pos && cursorPos && selection && selection.isEmpty() &&
             pos.lineNumber === cursorPos.lineNumber &&
-            Math.abs(pos.column - cursorPos.column) <= 1
+            pos.column === cursorPos.column
           ) {
             isTapOnExistingCursor = true;
           }
