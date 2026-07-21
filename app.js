@@ -1006,6 +1006,20 @@ console.log(user);
       return target && target.position ? target.position : null;
     };
 
+    // Monaco's getTargetAtClientPoint always clamps to the nearest valid
+    // document position, even when the tap lands well below the last line
+    // or past the end of a line, in empty space. That clamped position can
+    // equal the current cursor position, which used to be misread as "tap
+    // landed exactly on the existing cursor" and popped Select All/Paste
+    // for a tap that hit nothing at all. Checking target.type filters that
+    // out: only these types mean the tap actually hit real text content.
+    const isTapOnRealContent = (touch) => {
+      const target = editor.getTargetAtClientPoint(touch.clientX, touch.clientY);
+      if (!target) return false;
+      const t = window.monaco.editor.MouseTargetType;
+      return target.type === t.CONTENT_TEXT || target.type === t.CONTENT_EMPTY;
+    };
+
     domNode.addEventListener("touchstart", (e) => {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
@@ -1039,7 +1053,7 @@ console.log(user);
         // any different column, it just moves the cursor there like a
         // normal tap and the menu does not open.
         let isTapOnExistingCursor = false;
-        if (!isDoubleTap && editor.hasTextFocus()) {
+        if (!isDoubleTap && editor.hasTextFocus() && isTapOnRealContent(touch)) {
           const pos = posFromTouch(touch);
           const cursorPos = editor.getPosition();
           const selection = editor.getSelection();
