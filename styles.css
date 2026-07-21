@@ -122,6 +122,8 @@ body {
   gap: 8px;
   -webkit-user-select: none;
   user-select: none;
+  position: relative;
+  z-index: 10;
 }
 
 .brand {
@@ -284,6 +286,8 @@ body {
 .editor-pane {
   flex: 1 1 60%;
   min-height: 80px;
+  position: relative;
+  z-index: 20;
 }
 
 #monacoContainer {
