@@ -879,10 +879,14 @@ console.log(user);
   let bootWatchdog = null;
   let bootDone = false;
 
+  const log = window.__logBoot || function () {};
+  log("app.js executing.");
+
   function showLoadError(message) {
     clearTimeout(bootWatchdog);
     loadingText.textContent = message;
     loadingRetryBtn.hidden = false;
+    log("ERROR: " + message);
   }
 
   function startMonacoBoot() {
@@ -890,13 +894,16 @@ console.log(user);
     bootDone = false;
     loadingRetryBtn.hidden = true;
     loadingText.textContent = "Loading editor…";
+    log("startMonacoBoot() attempt #" + bootAttempt);
 
     // If the loader <script> tag itself failed (network/blocked), don't
     // even try require() — surface that immediately instead of hanging.
     if (window.__monacoLoaderFailed || typeof window.require !== "function") {
+      log("window.require is " + typeof window.require + ", __monacoLoaderFailed=" + !!window.__monacoLoaderFailed);
       showLoadError("Couldn't reach the editor's CDN. Check your connection or content blockers, then retry.");
       return;
     }
+    log("window.require is available, proceeding.");
 
     // Safety net: if editor.main never calls back (stalled request, iOS
     // Safari sometimes hangs instead of erroring), stop spinning forever.
@@ -909,10 +916,16 @@ console.log(user);
 
     try {
       require.config({ paths: { vs: MONACO_CDN } });
-      require(["vs/editor/editor.main"], onMonacoReady, function () {
+      log("require.config set, calling require(['vs/editor/editor.main'])…");
+      require(["vs/editor/editor.main"], function () {
+        log("require() success callback fired.");
+        onMonacoReady();
+      }, function (err) {
+        log("require() error callback fired: " + (err && err.message ? err.message : JSON.stringify(err)));
         showLoadError("Failed to load the editor. Check your connection or content blockers, then retry.");
       });
     } catch (e) {
+      log("require() threw synchronously: " + e.message);
       showLoadError("Failed to load the editor. Check your connection or content blockers, then retry.");
     }
   }
@@ -930,6 +943,17 @@ console.log(user);
   function onMonacoReady() {
     bootDone = true;
     clearTimeout(bootWatchdog);
+    log("onMonacoReady() starting editor setup…");
+    try {
+      setupEditor();
+      log("Editor setup complete. Hiding loading screen.");
+    } catch (e) {
+      log("ERROR during editor setup: " + e.message + (e.stack ? "\n" + e.stack : ""));
+      showLoadError("Editor loaded but setup failed: " + e.message);
+    }
+  }
+
+  function setupEditor() {
     monacoRef = monaco;
 
     monaco.languages.typescript.javascriptDefaults.setCompilerOptions({

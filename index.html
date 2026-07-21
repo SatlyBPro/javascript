@@ -121,9 +121,33 @@
   <div class="loading-badge">JS</div>
   <div class="loading-text" id="loadingText">Loading editor…</div>
   <button class="loading-retry" id="loadingRetryBtn" hidden>Retry</button>
+  <pre class="loading-debug" id="loadingDebug"></pre>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js" onerror="window.__monacoLoaderFailed = true;"></script>
+<script>
+  // Debug logger visible right on the loading screen, so failures are
+  // visible on devices (like iPad) with no accessible dev console.
+  window.__bootLog = [];
+  window.__logBoot = function (msg) {
+    var line = "[" + new Date().toISOString().substr(11, 8) + "] " + msg;
+    window.__bootLog.push(line);
+    var el = document.getElementById("loadingDebug");
+    if (el) {
+      el.hidden = false;
+      el.textContent = window.__bootLog.join("\n");
+    }
+  };
+  window.__logBoot("Page script started.");
+  window.addEventListener("error", function (e) {
+    window.__logBoot("window error: " + (e.message || e.error || "unknown") + (e.filename ? " (" + e.filename + ":" + e.lineno + ")" : ""));
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__logBoot("unhandled promise rejection: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"
+        onload="window.__logBoot('loader.js loaded OK.');"
+        onerror="window.__monacoLoaderFailed = true; window.__logBoot('loader.js FAILED to load (network/blocked).');"></script>
 <script src="app.js"></script>
 </body>
 </html>
