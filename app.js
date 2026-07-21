@@ -2,6 +2,29 @@
   "use strict";
 
   // ---------------------------------------------------------------
+  // Stable app height (see the --app-height comment in styles.css)
+  // ---------------------------------------------------------------
+  // Only recompute on load/rotation, never on keyboard show/hide, so the
+  // editor's container doesn't resize (and steal focus from its textarea)
+  // the instant the on-screen keyboard starts to animate in.
+  function setStableAppHeight() {
+    document.documentElement.style.setProperty("--app-height", window.innerHeight + "px");
+  }
+  setStableAppHeight();
+  window.addEventListener("orientationchange", function () {
+    setTimeout(setStableAppHeight, 50);
+  });
+  // A real resize (not a keyboard-driven one) still needs to update this,
+  // e.g. Split View / Stage Manager resizing on iPad. Debounced and only
+  // reacts to window "resize" (driven by actual layout viewport changes),
+  // never visualViewport "resize" (which also fires for the keyboard).
+  let appHeightResizeTimer = null;
+  window.addEventListener("resize", function () {
+    clearTimeout(appHeightResizeTimer);
+    appHeightResizeTimer = setTimeout(setStableAppHeight, 150);
+  });
+
+  // ---------------------------------------------------------------
   // State
   // ---------------------------------------------------------------
 
@@ -1358,13 +1381,6 @@ console.log(user);
     setTimeout(function () { loadingScreen.style.display = "none"; }, 350);
 
     logSystem("Ready. Press Run or Ctrl + Alt + N to execute.");
-
-    // Keep mobile viewport correct when the on-screen keyboard opens/closes.
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", function () {
-        if (editor) editor.layout();
-      });
-    }
   }
 
   startMonacoBoot();

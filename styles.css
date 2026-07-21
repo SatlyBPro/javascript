@@ -104,7 +104,16 @@ body {
 }
 
 #app {
-  height: 100dvh;
+  /* Deliberately NOT 100dvh. In iOS standalone/home-screen mode, dvh
+     (and the visualViewport) shrink live as soon as the on-screen keyboard
+     starts to appear. That shrink was resizing #app -> .workspace ->
+     #monacoContainer mid-animation, which fired Monaco's automaticLayout
+     resize handling and tore down/repositioned its hidden input textarea
+     while it still held focus — which is exactly what closed the keyboard
+     a split second after it opened. --app-height is set once from
+     window.innerHeight (see app.js) on load/rotation only, and is left
+     alone while the keyboard is opening/closing. */
+  height: calc(var(--app-height, 100dvh));
   display: flex;
   flex-direction: column;
   overflow: hidden;
