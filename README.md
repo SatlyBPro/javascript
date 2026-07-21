@@ -1,2 +1,2 @@
-# JavaScript
-Run JavaScript code anywhere directly. :)
+# JS Runner
+Best JavaScript code runner!
