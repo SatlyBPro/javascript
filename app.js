@@ -870,6 +870,186 @@ console.log(user);
     }
   });
 
+  // --- iOS/iPadOS touch text-selection fix ---------------------------------
+  // Native Safari long-press-to-select and its OS context menu fight with
+  // Monaco's own input handling. This disables the native gesture on the
+  // editor's hidden input layer and adds a light custom touch handler that:
+  //   - lets touch+drag move the cursor (like a native text field)
+  //   - shows a small custom menu with Cut/Copy/Paste (or Select All/Paste
+  //     with no selection) on double-tap, instead of the OS menu
+  function setupIOSTouchTextHandling(editor) {
+    const domNode = editor.getDomNode();
+    if (!domNode) return;
+
+    // Kill the native callout ("Copy/Look Up/Share...") and long-press
+    // selection gesture across the whole editor surface.
+    domNode.style.webkitTouchCallout = "none";
+    domNode.style.webkitUserSelect = "none";
+    domNode.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    const textarea = domNode.querySelector("textarea.inputarea");
+    if (textarea) {
+      textarea.style.webkitTouchCallout = "none";
+      textarea.style.webkitUserSelect = "none";
+      textarea.addEventListener("contextmenu", (e) => e.preventDefault());
+    }
+
+    let touchStart = null;
+    let longPressTimer = null;
+    let lastTapTime = 0;
+    let lastTapPos = null;
+
+    const posFromTouch = (touch) => {
+      const target = editor.getTargetAtClientPoint(touch.clientX, touch.clientY);
+      return target && target.position ? target.position : null;
+    };
+
+    domNode.addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+
+      // Long-press: start "dragging" the cursor from this point.
+      longPressTimer = setTimeout(() => {
+        const pos = posFromTouch(touch);
+        if (pos) {
+          editor.setPosition(pos);
+          editor.revealPosition(pos);
+          editor.focus();
+        }
+      }, 350);
+    }, { passive: true });
+
+    domNode.addEventListener("touchmove", (e) => {
+      if (e.touches.length !== 1 || !touchStart) return;
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - touchStart.x);
+      const dy = Math.abs(touch.clientY - touchStart.y);
+
+      // Once the finger has clearly moved, treat this as a drag: cancel the
+      // long-press callout timer and move the cursor to follow the finger.
+      if (dx > 6 || dy > 6) {
+        clearTimeout(longPressTimer);
+        const pos = posFromTouch(touch);
+        if (pos) editor.setPosition(pos);
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    domNode.addEventListener("touchend", (e) => {
+      clearTimeout(longPressTimer);
+      if (!touchStart) return;
+
+      const touch = e.changedTouches[0];
+      const dt = Date.now() - touchStart.time;
+      const dx = Math.abs(touch.clientX - touchStart.x);
+      const dy = Math.abs(touch.clientY - touchStart.y);
+      const wasTap = dt < 300 && dx < 6 && dy < 6;
+
+      if (wasTap) {
+        const now = Date.now();
+        const isDoubleTap =
+          now - lastTapTime < 300 &&
+          lastTapPos &&
+          Math.abs(touch.clientX - lastTapPos.x) < 20 &&
+          Math.abs(touch.clientY - lastTapPos.y) < 20;
+
+        if (isDoubleTap) {
+          e.preventDefault();
+          const pos = posFromTouch(touch);
+          if (pos) {
+            editor.setPosition(pos);
+            const model = editor.getModel();
+            const word = model.getWordAtPosition(pos);
+            if (word) {
+              editor.setSelection({
+                startLineNumber: pos.lineNumber,
+                startColumn: word.startColumn,
+                endLineNumber: pos.lineNumber,
+                endColumn: word.endColumn,
+              });
+            }
+            showEditorTouchMenu(editor, touch.clientX, touch.clientY);
+          }
+          lastTapTime = 0;
+          lastTapPos = null;
+        } else {
+          lastTapTime = now;
+          lastTapPos = { x: touch.clientX, y: touch.clientY };
+        }
+      }
+
+      touchStart = null;
+    });
+  }
+
+  function showEditorTouchMenu(editor, x, y) {
+    const existing = document.getElementById("editorTouchMenu");
+    if (existing) existing.remove();
+
+    const selection = editor.getSelection();
+    const hasSelection = selection && !selection.isEmpty();
+
+    const menu = document.createElement("div");
+    menu.id = "editorTouchMenu";
+    menu.className = "editor-touch-menu";
+
+    const actions = hasSelection
+      ? [
+          ["Cut", () => execEditorAction(editor, "cut")],
+          ["Copy", () => execEditorAction(editor, "copy")],
+          ["Paste", () => execEditorAction(editor, "paste")],
+        ]
+      : [
+          ["Select All", () => editor.trigger("touch", "editor.action.selectAll")],
+          ["Paste", () => execEditorAction(editor, "paste")],
+        ];
+
+    actions.forEach(([label, handler]) => {
+      const btn = document.createElement("button");
+      btn.textContent = label;
+      btn.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        handler();
+        menu.remove();
+      });
+      menu.appendChild(btn);
+    });
+
+    document.body.appendChild(menu);
+
+    const rect = menu.getBoundingClientRect();
+    menu.style.left = Math.max(8, x - rect.width / 2) + "px";
+    menu.style.top = Math.max(8, y - rect.height - 12) + "px";
+
+    const dismiss = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener("touchstart", dismiss);
+      }
+    };
+    setTimeout(() => document.addEventListener("touchstart", dismiss), 0);
+  }
+
+  async function execEditorAction(editor, kind) {
+    const model = editor.getModel();
+    const selection = editor.getSelection();
+    const text = model.getValueInRange(selection);
+    try {
+      if (kind === "copy" || kind === "cut") {
+        await navigator.clipboard.writeText(text);
+        if (kind === "cut") {
+          editor.executeEdits("touch-cut", [{ range: selection, text: "" }]);
+        }
+      } else if (kind === "paste") {
+        const clip = await navigator.clipboard.readText();
+        editor.executeEdits("touch-paste", [{ range: selection, text: clip }]);
+      }
+    } catch (err) {
+      console.warn("Clipboard action failed:", err);
+    }
+  }
+
   // ---------------------------------------------------------------
   // Monaco bootstrap
   // ---------------------------------------------------------------
@@ -1148,6 +1328,8 @@ console.log(user);
       snippetSuggestions: "inline",
       padding: { top: 12 }
     });
+
+    setupIOSTouchTextHandling(editor);
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyN, runCode);
 

@@ -164,6 +164,33 @@ body {
   margin-left: 2px;
 }
 
+.editor-touch-menu {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  background: #2c2c2e;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.editor-touch-menu button {
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.editor-touch-menu button:last-child {
+  border-right: none;
+}
+
+.editor-touch-menu button:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 @media (min-width: 640px) {
   .brand-name { display: inline; }
 }
