@@ -429,18 +429,6 @@ body {
   flex-shrink: 0;
 }
 
-#consoleInput {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text-main);
-  font-family: "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
-  font-size: 13px;
-  min-width: 0;
-}
-#consoleInput::placeholder { color: var(--text-faint); }
-
 /* ---------- Mobile toolbar ---------- */
 
 .mobile-toolbar {
@@ -665,7 +653,6 @@ body {
   .console-tab { font-size: 13px; }
   .console-output { font-size: 14px; }
   .prompt-caret { font-size: 15px; }
-  #consoleInput { font-size: 15px; }
 
   .mkey {
     min-width: 48px;
