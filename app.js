@@ -1112,6 +1112,7 @@ console.log(user);
       minimap: { enabled: settings.minimap },
       wordWrap: settings.wordWrap ? "on" : "off",
       automaticLayout: true,
+      fixedOverflowWidgets: true,
       tabSize: 2,
       insertSpaces: true,
       scrollBeyondLastLine: false,
