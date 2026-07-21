@@ -70,12 +70,16 @@
           <button class="console-tab active" data-tab="console">Console</button>
         </div>
         <div class="console-actions">
-          <button class="icon-btn small" id="clearConsoleBtn" title="Clear console" aria-label="Clear console">
+          <button class="icon-btn" id="clearConsoleBtn" title="Clear console" aria-label="Clear console">
             <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M19 6l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg>
           </button>
         </div>
       </div>
       <div class="console-output" id="consoleOutput"></div>
+      <form class="console-input-row" id="consoleInputRow">
+        <span class="prompt-caret">&gt;</span>
+        <input type="text" id="consoleInput" placeholder="Evaluate an expression..." autocomplete="off" autocapitalize="off" spellcheck="false" />
+      </form>
     </section>
   </main>
 

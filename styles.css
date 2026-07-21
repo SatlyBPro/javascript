@@ -294,6 +294,28 @@ body {
 #monacoContainer {
   width: 100%;
   height: 100%;
+  /* Let Monaco's own touch handling own gestures inside the editor
+     (tap-to-place-cursor, drag-to-select/move-cursor, press-and-drag
+     scroll). Without this, iOS/iPadOS Safari can claim single-finger
+     touches for its own pan/zoom heuristics before Monaco ever sees
+     them, which is what makes cursor placement and dragging feel
+     unreliable on touch devices. pan-y still allows two-finger and
+     edge-swipe scroll gestures to pass through where Monaco doesn't
+     handle them itself. */
+  touch-action: pan-y;
+}
+
+#monacoContainer .monaco-editor,
+#monacoContainer .overflow-guard,
+#monacoContainer .monaco-scrollable-element {
+  touch-action: pan-y;
+}
+
+/* The hidden native textarea Monaco uses to capture keyboard input must
+   not fight the touch gesture either, or single-finger drags inside it
+   can get eaten by Safari before Monaco's cursor/selection logic runs. */
+.monaco-editor textarea.inputarea {
+  touch-action: manipulation;
 }
 
 /* Monaco keeps a real (visually hidden) <textarea> under the hood to
@@ -337,8 +359,8 @@ body {
 }
 
 .console-header {
-  height: 34px;
-  min-height: 34px;
+  height: 38px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -428,6 +450,18 @@ body {
   font-size: 13px;
   flex-shrink: 0;
 }
+
+#consoleInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-main);
+  font-family: "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  font-size: 13px;
+  min-width: 0;
+}
+#consoleInput::placeholder { color: var(--text-faint); }
 
 /* ---------- Mobile toolbar ---------- */
 
@@ -650,9 +684,14 @@ body {
   .popover-row input[type="checkbox"] { width: 20px; height: 20px; }
   .popover-confirm { padding: 10px; font-size: 14px; }
 
+  .console-header { height: 44px; min-height: 44px; padding: 0 8px 0 12px; }
+  #clearConsoleBtn { width: 38px; height: 38px; }
+  #clearConsoleBtn svg { width: 20px; height: 20px; }
+
   .console-tab { font-size: 13px; }
   .console-output { font-size: 14px; }
   .prompt-caret { font-size: 15px; }
+  #consoleInput { font-size: 15px; }
 
   .mkey {
     min-width: 48px;

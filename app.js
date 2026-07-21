@@ -95,6 +95,8 @@ console.log(user);
   const runBtn = $("#runBtn");
   const mobileRunBtn = $("#mobileRunBtn");
   const consoleOutput = $("#consoleOutput");
+  const consoleInput = $("#consoleInput");
+  const consoleInputRow = $("#consoleInputRow");
   const clearConsoleBtn = $("#clearConsoleBtn");
   const loadingScreen = $("#loadingScreen");
   const loadingText = $("#loadingText");
@@ -792,6 +794,27 @@ console.log(user);
   const inputHistory = [];
   let historyIdx = -1;
 
+  consoleInputRow.addEventListener("submit", function (e) {
+    e.preventDefault();
+    const val = consoleInput.value.trim();
+    if (!val) return;
+    inputHistory.push(val);
+    historyIdx = inputHistory.length;
+    consoleInput.value = "";
+    evalExpression(val);
+  });
+
+  consoleInput.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowUp") {
+      if (historyIdx > 0) { historyIdx--; consoleInput.value = inputHistory[historyIdx]; }
+      e.preventDefault();
+    } else if (e.key === "ArrowDown") {
+      if (historyIdx < inputHistory.length - 1) { historyIdx++; consoleInput.value = inputHistory[historyIdx]; }
+      else { historyIdx = inputHistory.length; consoleInput.value = ""; }
+      e.preventDefault();
+    }
+  });
+
   // ---------------------------------------------------------------
   // Block the browser's native save dialog everywhere on the page.
   // Autosave already persists every change, so Ctrl+S has
@@ -1108,6 +1131,14 @@ console.log(user);
       renderWhitespace: "selection",
       folding: true,
       matchBrackets: "never",
+      // Touch support: lets a single-finger drag on iOS/iPadOS both move
+      // the cursor and extend a selection, matching how touch text editing
+      // works natively. mouseWheelZoom off so pinch/scroll gestures never
+      // get reinterpreted as zoom on trackpads/touch.
+      multiCursorModifier: "alt",
+      mouseWheelZoomModifier: "ctrlCmd",
+      dragAndDrop: true,
+      selectionClipboard: false,
       autoClosingBrackets: "languageDefined",
       autoClosingQuotes: "languageDefined",
       autoClosingOvertype: "auto",
