@@ -1028,7 +1028,25 @@ console.log(user);
           Math.abs(touch.clientX - lastTapPos.x) < 20 &&
           Math.abs(touch.clientY - lastTapPos.y) < 20;
 
-        if (isDoubleTap) {
+        // Tapping exactly where the cursor already is (editor focused,
+        // cursor visibly blinking there) is treated the same as a
+        // double-tap: it opens the menu directly, no need to tap twice.
+        // A small column tolerance is used since a fingertip rarely lands
+        // on the exact character column even when visually "on" the cursor.
+        let isTapOnExistingCursor = false;
+        if (!isDoubleTap && editor.hasTextFocus()) {
+          const pos = posFromTouch(touch);
+          const cursorPos = editor.getPosition();
+          if (
+            pos && cursorPos &&
+            pos.lineNumber === cursorPos.lineNumber &&
+            Math.abs(pos.column - cursorPos.column) <= 1
+          ) {
+            isTapOnExistingCursor = true;
+          }
+        }
+
+        if (isDoubleTap || isTapOnExistingCursor) {
           // This IS a direct, synchronous result of the user's tap, so
           // focus()/setPosition() here are safe and will raise the keyboard.
           e.preventDefault();
