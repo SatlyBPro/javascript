@@ -465,6 +465,28 @@ body {
 .mkey.wide { min-width: 76px; font-weight: 700; background: var(--accent); font-family: inherit; font-size: 13px; }
 .mkey.wide:active { background: var(--accent-hover); }
 
+.mkey-space {
+  min-width: 64px;
+  flex: 0 0 auto;
+  font-size: 16px;
+  color: var(--text-dim);
+  touch-action: none;
+}
+.mkey-space.active-trackpad {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Shown while a hold-and-drag cursor gesture is active (either from the
+   caret itself or the on-screen space key), as a subtle confirmation
+   that touch input is being read as cursor movement rather than scroll. */
+.touch-cursor-dragging {
+  cursor: grabbing;
+}
+.touch-cursor-dragging .cursor {
+  box-shadow: 0 0 0 3px var(--accent-hover);
+}
+
 /* ---------- Popovers ---------- */
 
 .popover {
@@ -595,10 +617,73 @@ body {
   50% { transform: scale(0.92); opacity: 0.7; }
 }
 
-/* ---------- Mobile layout ---------- */
+/* ---------- Touch devices (phones, tablets/iPad) ---------- */
+/* pointer:coarse covers touch devices of any screen size, including iPad
+   in landscape (which is wider than typical "mobile" breakpoints but is
+   still finger-operated, so controls need to be bigger than on desktop). */
+
+@media (pointer: coarse) {
+  :root { --topbar-h-touch: 56px; }
+
+  .topbar {
+    height: var(--topbar-h-touch);
+    min-height: var(--topbar-h-touch);
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .icon-btn {
+    width: 42px;
+    height: 42px;
+  }
+  .icon-btn svg { width: 22px; height: 22px; }
+  .icon-btn.small { width: 34px; height: 34px; }
+  .icon-btn.small svg { width: 19px; height: 19px; }
+
+  .run-btn {
+    height: 42px;
+    padding: 0 16px;
+    font-size: 15px;
+    gap: 8px;
+  }
+  .run-btn svg { width: 17px; height: 17px; }
+
+  .brand-badge { width: 28px; height: 28px; border-radius: 6px; }
+  .brand-name { font-size: 14px; }
+
+  .file-tab {
+    font-size: 14px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .file-tab .tab-close { width: 20px; height: 20px; }
+  .file-tab .tab-close svg { width: 13px; height: 13px; }
+  .file-tab .tab-dot { width: 7px; height: 7px; }
+
+  .popover { top: calc(var(--topbar-h-touch) + 6px); min-width: 260px; padding: 16px; }
+  .popover-row { font-size: 14px; padding: 9px 2px; }
+  .popover-row input[type="checkbox"] { width: 20px; height: 20px; }
+  .popover-confirm { padding: 10px; font-size: 14px; }
+
+  .console-tab { font-size: 13px; }
+  .console-output { font-size: 14px; }
+  .prompt-caret { font-size: 15px; }
+  #consoleInput { font-size: 15px; }
+
+  .mkey {
+    min-width: 48px;
+    font-size: 16px;
+  }
+  .mkey.wide { min-width: 88px; font-size: 14px; }
+}
+
+/* ---------- Mobile (narrow / phone) layout ---------- */
 
 @media (max-width: 760px), (pointer: coarse) {
   .mobile-toolbar { display: flex; }
+}
+
+@media (max-width: 760px) {
   .topbar { padding: 0 6px; gap: 4px; }
   .run-btn span { display: none; }
   .run-btn { padding: 0 10px; gap: 0; }
