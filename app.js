@@ -669,6 +669,47 @@ console.log(user);
     clearEditor();
   });
 
+// ---------------------------------------------------------------
+  // Update / refresh app (PWA: clear caches, unregister service
+  // workers, then hard-reload so the home-screen app picks up the
+  // latest deployed version instead of a stale cached copy).
+  // ---------------------------------------------------------------
+
+  const updateAppBtn = $("#updateAppBtn");
+
+  async function refreshApp() {
+    const icon = updateAppBtn.querySelector("svg");
+    updateAppBtn.disabled = true;
+    if (icon) icon.style.animation = "spin 0.8s linear infinite";
+    logSystem("Checking for updates…");
+
+    try {
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(function (r) { return r.unregister(); }));
+      }
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(function (k) { return caches.delete(k); }));
+      }
+    } catch (e) {
+      log("refreshApp: cache/SW cleanup failed: " + e.message);
+    }
+
+    // Bust any cached index.html / app.js via a query param, since some
+    // hosts (and iOS "Add to Home Screen") cache aggressively even
+    // without a service worker.
+    const url = new URL(window.location.href);
+    url.searchParams.set("_r", Date.now());
+    window.location.replace(url.toString());
+  }
+
+  updateAppBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    closeAllPopovers();
+    refreshApp();
+  });
+
   // ---------------------------------------------------------------
   // Settings popover
   // ---------------------------------------------------------------

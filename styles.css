@@ -643,6 +643,10 @@ body {
   50% { transform: scale(0.92); opacity: 0.7; }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ---------- Touch devices (phones, tablets/iPad) ---------- */
 /* pointer:coarse covers touch devices of any screen size, including iPad
    in landscape (which is wider than typical "mobile" breakpoints but is
