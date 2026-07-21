@@ -147,11 +147,41 @@
   window.addEventListener("unhandledrejection", function (e) {
     window.__logBoot("unhandled promise rejection: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
   });
+
+  // Pick a Monaco build based on the browser. Recent Monaco releases use
+  // modern JS syntax/APIs that older Safari (iOS/iPadOS <= 15) can't parse,
+  // which surfaces as an opaque "Script error." with no usable stack trace.
+  // Older Safari versions get an older, broadly-compatible Monaco build;
+  // everyone else gets the current one.
+  (function () {
+    var version = "0.52.2"; // current, full-featured build
+    var ua = navigator.userAgent;
+    var m = ua.match(/Version\/(\d+)\.\d+(\.\d+)? Safari/); // Safari on iOS/iPadOS/macOS
+    var isSafari = !!m;
+    var safariMajor = m ? parseInt(m[1], 10) : null;
+    // Also catches iOS/iPadOS Chrome/Firefox/etc, which all use WebKit
+    // under the hood and inherit the same JS engine limitations.
+    var webkitVersionMatch = ua.match(/CPU (?:iPhone )?OS (\d+)_/);
+    var iosMajor = webkitVersionMatch ? parseInt(webkitVersionMatch[1], 10) : null;
+
+    if ((isSafari && safariMajor !== null && safariMajor <= 15) || (iosMajor !== null && iosMajor <= 15)) {
+      version = "0.30.1"; // older build, broad legacy-Safari compatibility
+      window.__logBoot("Old Safari/iOS detected (Safari " + safariMajor + ", iOS " + iosMajor + ") — using legacy Monaco " + version + ".");
+    } else {
+      window.__logBoot("Using current Monaco " + version + ".");
+    }
+
+    window.__MONACO_VERSION = version;
+    window.__MONACO_CDN = "https://cdn.jsdelivr.net/npm/monaco-editor@" + version + "/min/vs";
+
+    var s = document.createElement("script");
+    s.src = window.__MONACO_CDN + "/loader.js";
+    s.crossOrigin = "anonymous";
+    s.onload = function () { window.__logBoot("loader.js (" + version + ") loaded OK."); };
+    s.onerror = function () { window.__monacoLoaderFailed = true; window.__logBoot("loader.js (" + version + ") FAILED to load (network/blocked)."); };
+    document.currentScript.after(s);
+  })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"
-        crossorigin="anonymous"
-        onload="window.__logBoot('loader.js loaded OK.');"
-        onerror="window.__monacoLoaderFailed = true; window.__logBoot('loader.js FAILED to load (network/blocked).');"></script>
 <script src="app.js"></script>
 </body>
 </html>

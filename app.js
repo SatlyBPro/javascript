@@ -874,7 +874,7 @@ console.log(user);
   // Monaco bootstrap
   // ---------------------------------------------------------------
 
-  const MONACO_CDN = "https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs";
+  const MONACO_CDN = window.__MONACO_CDN || "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs";
   let bootAttempt = 0;
   let bootWatchdog = null;
   let bootDone = false;
@@ -889,15 +889,25 @@ console.log(user);
     log("ERROR: " + message);
   }
 
-  function startMonacoBoot() {
+  function startMonacoBoot(waitedMs) {
+    waitedMs = waitedMs || 0;
     bootAttempt++;
     bootDone = false;
     loadingRetryBtn.hidden = true;
     loadingText.textContent = "Loading editor…";
     log("startMonacoBoot() attempt #" + bootAttempt);
 
-    // If the loader <script> tag itself failed (network/blocked), don't
-    // even try require() — surface that immediately instead of hanging.
+    // The loader <script> is injected dynamically (its src depends on
+    // browser detection), so it may not have finished by the time app.js
+    // runs. Poll briefly before giving up, rather than failing immediately.
+    if (typeof window.require !== "function" && !window.__monacoLoaderFailed) {
+      if (waitedMs < 8000) {
+        setTimeout(function () { startMonacoBoot(waitedMs + 100); }, 100);
+        bootAttempt--; // this was a poll, not a real attempt
+        return;
+      }
+    }
+
     if (window.__monacoLoaderFailed || typeof window.require !== "function") {
       log("window.require is " + typeof window.require + ", __monacoLoaderFailed=" + !!window.__monacoLoaderFailed);
       showLoadError("Couldn't reach the editor's CDN. Check your connection or content blockers, then retry.");
