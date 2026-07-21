@@ -138,14 +138,18 @@
     }
   };
   window.__logBoot("Page script started.");
+  window.__logBoot("UA: " + navigator.userAgent);
   window.addEventListener("error", function (e) {
-    window.__logBoot("window error: " + (e.message || e.error || "unknown") + (e.filename ? " (" + e.filename + ":" + e.lineno + ")" : ""));
+    var detail = e.message || "unknown";
+    if (e.error && e.error.stack) detail += " | stack: " + e.error.stack;
+    window.__logBoot("window error: " + detail + (e.filename ? " (" + e.filename + ":" + e.lineno + ":" + e.colno + ")" : " (no file/line - likely cross-origin script)"));
   });
   window.addEventListener("unhandledrejection", function (e) {
     window.__logBoot("unhandled promise rejection: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
   });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"
+        crossorigin="anonymous"
         onload="window.__logBoot('loader.js loaded OK.');"
         onerror="window.__monacoLoaderFailed = true; window.__logBoot('loader.js FAILED to load (network/blocked).');"></script>
 <script src="app.js"></script>
