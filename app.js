@@ -1024,10 +1024,17 @@ console.log(user);
       return y >= contentTop && y < contentTop + lineHeight;
     };
 
+    let menuWasOpenAtTouchStart = false;
+
     domNode.addEventListener("touchstart", (e) => {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
       touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+      // The menu's own dismiss listener (touchstart on document) also
+      // fires for this same touch and may remove the menu before our
+      // touchend handler below runs, so capture the "was it open" state
+      // now, before that removal happens.
+      menuWasOpenAtTouchStart = !!document.getElementById("editorTouchMenu");
     }, { passive: true });
 
     domNode.addEventListener("touchend", (e) => {
@@ -1040,6 +1047,17 @@ console.log(user);
       const wasTap = dt < 300 && dx < 6 && dy < 6;
 
       if (wasTap) {
+        // If the Cut/Copy/Paste-style menu was already open when this tap
+        // began, don't let it re-evaluate into opening the menu again.
+        // The menu's own dismiss listener already closes it on an outside
+        // tap; we just skip all the tap/double-tap/triple-tap menu-opening
+        // logic below so this same touch can't immediately reopen it.
+        if (menuWasOpenAtTouchStart) {
+          touchStart = null;
+          menuWasOpenAtTouchStart = false;
+          return;
+        }
+
         const now = Date.now();
         const isCloseToLastTap =
           lastTapPos &&
