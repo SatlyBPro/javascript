@@ -958,7 +958,28 @@ console.log(user);
     const text = btn.dataset.raw || btn.dataset.insert;
     if (text) {
       const sel = editor.getSelection();
-      editor.executeEdits("mobile-toolbar", [{ range: sel, text: text, forceMoveMarkers: true }]);
+      // Bracket/quote keys auto-close: with nothing selected, insert both
+      // halves and put the cursor between them, matching how typing "("
+      // normally behaves in the editor (autoClosingBrackets/Quotes only
+      // fires for real keyboard input, not for programmatic edits like
+      // this, so the toolbar has to do it manually). With text selected,
+      // wrap the selection in the pair instead, cursor left at the end of
+      // the now-wrapped selection, same as typical editor bracket-wrap.
+      const pairs = { "(": ")", "{": "}", "[": "]", "\"": "\"" };
+      const closer = pairs[text];
+      if (closer) {
+        if (sel.isEmpty()) {
+          const pos = sel.getStartPosition();
+          editor.executeEdits("mobile-toolbar", [{ range: sel, text: text + closer, forceMoveMarkers: true }]);
+          editor.setPosition({ lineNumber: pos.lineNumber, column: pos.column + text.length });
+        } else {
+          const model = editor.getModel();
+          const inner = model.getValueInRange(sel);
+          editor.executeEdits("mobile-toolbar", [{ range: sel, text: text + inner + closer, forceMoveMarkers: true }]);
+        }
+      } else {
+        editor.executeEdits("mobile-toolbar", [{ range: sel, text: text, forceMoveMarkers: true }]);
+      }
       editor.focus();
     }
   });
