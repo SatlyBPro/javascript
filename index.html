@@ -119,10 +119,11 @@
 
 <div class="loading-screen" id="loadingScreen">
   <div class="loading-badge">JS</div>
-  <div class="loading-text">Loading editor…</div>
+  <div class="loading-text" id="loadingText">Loading editor…</div>
+  <button class="loading-retry" id="loadingRetryBtn" hidden>Retry</button>
 </div>
 
-<script src="https://unpkg.com/monaco-editor@0.52.2/min/vs/loader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js" onerror="window.__monacoLoaderFailed = true;"></script>
 <script src="app.js"></script>
 </body>
 </html>

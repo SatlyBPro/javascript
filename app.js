@@ -99,6 +99,8 @@ console.log(user);
   const consoleInputRow = $("#consoleInputRow");
   const clearConsoleBtn = $("#clearConsoleBtn");
   const loadingScreen = $("#loadingScreen");
+  const loadingText = $("#loadingText");
+  const loadingRetryBtn = $("#loadingRetryBtn");
   const splitter = $("#splitter");
   const editorPane = $("#editorPane");
   const consolePane = $("#consolePane");
@@ -872,9 +874,62 @@ console.log(user);
   // Monaco bootstrap
   // ---------------------------------------------------------------
 
-  require.config({ paths: { vs: "https://unpkg.com/monaco-editor@0.52.2/min/vs" } });
+  const MONACO_CDN = "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs";
+  let bootAttempt = 0;
+  let bootWatchdog = null;
+  let bootDone = false;
 
-  require(["vs/editor/editor.main"], function () {
+  function showLoadError(message) {
+    clearTimeout(bootWatchdog);
+    loadingText.textContent = message;
+    loadingRetryBtn.hidden = false;
+  }
+
+  function startMonacoBoot() {
+    bootAttempt++;
+    bootDone = false;
+    loadingRetryBtn.hidden = true;
+    loadingText.textContent = "Loading editor…";
+
+    // If the loader <script> tag itself failed (network/blocked), don't
+    // even try require() — surface that immediately instead of hanging.
+    if (window.__monacoLoaderFailed || typeof window.require !== "function") {
+      showLoadError("Couldn't reach the editor's CDN. Check your connection or content blockers, then retry.");
+      return;
+    }
+
+    // Safety net: if editor.main never calls back (stalled request, iOS
+    // Safari sometimes hangs instead of erroring), stop spinning forever.
+    clearTimeout(bootWatchdog);
+    bootWatchdog = setTimeout(function () {
+      if (!bootDone) {
+        showLoadError("The editor is taking too long to load. This can happen on some networks or with content blockers enabled in Safari.");
+      }
+    }, 12000);
+
+    try {
+      require.config({ paths: { vs: MONACO_CDN } });
+      require(["vs/editor/editor.main"], onMonacoReady, function () {
+        showLoadError("Failed to load the editor. Check your connection or content blockers, then retry.");
+      });
+    } catch (e) {
+      showLoadError("Failed to load the editor. Check your connection or content blockers, then retry.");
+    }
+  }
+
+  loadingRetryBtn.addEventListener("click", function () {
+    if (bootAttempt >= 3) {
+      // require.js caches failed module state; a full reload is the
+      // most reliable way to retry after repeated failures.
+      window.location.reload();
+      return;
+    }
+    startMonacoBoot();
+  });
+
+  function onMonacoReady() {
+    bootDone = true;
+    clearTimeout(bootWatchdog);
     monacoRef = monaco;
 
     monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
@@ -1073,7 +1128,9 @@ console.log(user);
         if (editor) editor.layout();
       });
     }
-  });
+  }
+
+  startMonacoBoot();
 
   // Prevent iOS bounce/zoom weirdness on double-tap of toolbar buttons.
   document.addEventListener("dblclick", function (e) {
