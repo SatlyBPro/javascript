@@ -999,6 +999,7 @@ console.log(user);
     let touchStart = null;
     let lastTapTime = 0;
     let lastTapPos = null;
+    let tapCount = 0;
 
     const posFromTouch = (touch) => {
       const target = editor.getTargetAtClientPoint(touch.clientX, touch.clientY);
@@ -1022,23 +1023,27 @@ console.log(user);
 
       if (wasTap) {
         const now = Date.now();
-        const isDoubleTap =
-          now - lastTapTime < 300 &&
+        const isCloseToLastTap =
           lastTapPos &&
           Math.abs(touch.clientX - lastTapPos.x) < 20 &&
           Math.abs(touch.clientY - lastTapPos.y) < 20;
+        const isDoubleTap = now - lastTapTime < 300 && isCloseToLastTap;
+        // A third tap landing in the same spot within the same window as
+        // the second — i.e. right after we've just handled a double-tap.
+        const isTripleTap = isDoubleTap && tapCount === 2;
 
         // Tapping exactly where the cursor already is (editor focused,
-        // cursor visibly blinking there) is treated the same as a
-        // double-tap: it opens the menu directly, no need to tap twice.
+        // cursor visibly blinking there, nothing currently selected) opens
+        // the menu directly with no selection change — Select All/Paste.
         // A small column tolerance is used since a fingertip rarely lands
         // on the exact character column even when visually "on" the cursor.
         let isTapOnExistingCursor = false;
         if (!isDoubleTap && editor.hasTextFocus()) {
           const pos = posFromTouch(touch);
           const cursorPos = editor.getPosition();
+          const selection = editor.getSelection();
           if (
-            pos && cursorPos &&
+            pos && cursorPos && selection && selection.isEmpty() &&
             pos.lineNumber === cursorPos.lineNumber &&
             Math.abs(pos.column - cursorPos.column) <= 1
           ) {
@@ -1046,9 +1051,27 @@ console.log(user);
           }
         }
 
-        if (isDoubleTap || isTapOnExistingCursor) {
-          // This IS a direct, synchronous result of the user's tap, so
-          // focus()/setPosition() here are safe and will raise the keyboard.
+        if (isTripleTap) {
+          // Select the whole line that was tapped.
+          e.preventDefault();
+          const pos = posFromTouch(touch);
+          if (pos) {
+            const model = editor.getModel();
+            editor.setSelection({
+              startLineNumber: pos.lineNumber,
+              startColumn: 1,
+              endLineNumber: pos.lineNumber,
+              endColumn: model.getLineMaxColumn(pos.lineNumber),
+            });
+            editor.focus();
+            showEditorTouchMenu(editor, touch.clientX, touch.clientY);
+          }
+          tapCount = 0;
+          lastTapTime = 0;
+          lastTapPos = null;
+        } else if (isDoubleTap) {
+          // Select the word under the tap — Cut/Copy/Paste, since there's
+          // now a real selection.
           e.preventDefault();
           const pos = posFromTouch(touch);
           if (pos) {
@@ -1066,9 +1089,20 @@ console.log(user);
             }
             showEditorTouchMenu(editor, touch.clientX, touch.clientY);
           }
+          tapCount = 2;
+          lastTapTime = now;
+          lastTapPos = { x: touch.clientX, y: touch.clientY };
+        } else if (isTapOnExistingCursor) {
+          // No selection change — just open the menu as-is (empty
+          // selection) so it shows Select All/Paste.
+          e.preventDefault();
+          editor.focus();
+          showEditorTouchMenu(editor, touch.clientX, touch.clientY);
+          tapCount = 0;
           lastTapTime = 0;
           lastTapPos = null;
         } else {
+          tapCount = isCloseToLastTap ? tapCount + 1 : 1;
           lastTapTime = now;
           lastTapPos = { x: touch.clientX, y: touch.clientY };
         }
