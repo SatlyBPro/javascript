@@ -114,6 +114,7 @@ console.log(user);
   // ---------------------------------------------------------------
 
   const $ = (sel) => document.querySelector(sel);
+  const brandVersionEl = $("#brandVersion");
   const fileTabsEl = $("#fileTabs");
   const runBtn = $("#runBtn");
   const mobileRunBtn = $("#mobileRunBtn");
@@ -732,6 +733,57 @@ console.log(user);
     closeAllPopovers();
     refreshApp();
   });
+
+  // ---------------------------------------------------------------
+  // Auto-detect stale version on resume
+  // ---------------------------------------------------------------
+  // On iOS, a home-screen "standalone" app is kept alive by the OS as a
+  // suspended process rather than actually closed when you leave it —
+  // closer to how a native app backgrounds than how a browser tab
+  // discards. Reopening it resumes that same suspended page instead of
+  // re-requesting anything, so it can silently keep showing an old
+  // deployed version indefinitely (only an actual device restart, or a
+  // long enough idle time for iOS to fully evict the process, forces a
+  // real reload). The manual "refresh" button covers the ad-hoc case;
+  // this covers it automatically every time the app is reopened/resumed,
+  // so people don't have to remember to tap it.
+  //
+  // On every resume, fetch a cache-busted copy of index.html (small,
+  // cheap) and compare its embedded version string to the one currently
+  // rendered on screen. If they differ, silently do the same cache-clear
+  // + hard reload the manual button does.
+  async function checkForStaleVersion() {
+    try {
+      const url = new URL("index.html", window.location.href);
+      url.searchParams.set("_v", Date.now());
+      const res = await fetch(url.toString(), { cache: "no-store" });
+      if (!res.ok) return;
+      const html = await res.text();
+      const match = html.match(/id="brandVersion">([^<]+)</);
+      const latestVersion = match ? match[1].trim() : null;
+      const currentVersion = brandVersionEl ? brandVersionEl.textContent.trim() : null;
+
+      if (latestVersion && currentVersion && latestVersion !== currentVersion) {
+        logSystem("Newer version detected (" + currentVersion + " → " + latestVersion + "). Updating…");
+        await refreshApp();
+      }
+    } catch (e) {
+      log("checkForStaleVersion failed: " + e.message);
+    }
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") checkForStaleVersion();
+  });
+  // pageshow with persisted=true fires specifically when a page is restored
+  // from the (b)f-cache / suspended state rather than freshly loaded —
+  // exactly the iOS standalone-resume case this is aimed at.
+  window.addEventListener("pageshow", function (e) {
+    if (e.persisted) checkForStaleVersion();
+  });
+  // Also check once shortly after each fresh load, in case this very
+  // load was itself served from a stale WKWebView disk cache.
+  setTimeout(checkForStaleVersion, 1500);
 
   // ---------------------------------------------------------------
   // Settings popover
