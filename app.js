@@ -969,16 +969,6 @@ console.log(user);
       const wasTap = dt < 300 && dx < 6 && dy < 6;
 
       if (wasTap) {
-        // WKWebView in standalone/home-screen mode (unlike regular mobile
-        // Safari) frequently refuses to raise the keyboard from Monaco's own
-        // internal focus handling alone, even though the tap is a genuine
-        // user gesture. As a direct, synchronous belt-and-suspenders fix,
-        // explicitly focus (and re-focus) the real underlying <textarea>
-        // ourselves on every single tap, not just the double-tap case below.
-        if (textarea) {
-          textarea.focus({ preventScroll: true });
-        }
-
         const now = Date.now();
         const isDoubleTap =
           now - lastTapTime < 300 &&
