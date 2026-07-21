@@ -106,6 +106,7 @@ console.log(user);
   const settingsBtn = $("#settingsBtn");
   const settingsPopover = $("#settingsPopover");
   const newFileBtn = $("#newFileBtn");
+  const clearEditorBtn = $("#clearEditorBtn");
   const newFilePopover = $("#newFilePopover");
   const newFileName = $("#newFileName");
   const newFileConfirm = $("#newFileConfirm");
@@ -651,6 +652,21 @@ console.log(user);
   newFileName.addEventListener("keydown", function (e) {
     if (e.key === "Enter") { createFile(newFileName.value.trim()); newFilePopover.hidden = true; }
     if (e.key === "Escape") { newFilePopover.hidden = true; }
+  });
+
+  function clearEditor() {
+    if (!editor) return;
+    if (!editor.getValue()) return;
+    if (!window.confirm("Clear the editor? This can't be undone.")) return;
+    editor.setValue("");
+    editor.focus();
+    logSystem("Editor cleared.");
+  }
+
+  clearEditorBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    closeAllPopovers();
+    clearEditor();
   });
 
   // ---------------------------------------------------------------
