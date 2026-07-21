@@ -1351,7 +1351,13 @@ console.log(user);
       autoSurround: "languageDefined",
       tabCompletion: "on",
       snippetSuggestions: "inline",
-      padding: { top: 12 }
+      padding: { top: 12 },
+      // Monaco has its own built-in right-click/long-press menu (Go to
+      // Definition, Go to References, Command Palette, ...) that's separate
+      // from — and opens independently of — the native browser contextmenu
+      // event we suppress above. Turn it off entirely; our custom
+      // double-tap Cut/Copy/Paste menu is the only context menu we want.
+      contextmenu: false
     });
 
     setupIOSTouchTextHandling(editor);
