@@ -296,6 +296,17 @@ body {
   height: 100%;
 }
 
+/* Monaco keeps a real (visually hidden) <textarea> under the hood to
+   capture native keyboard/IME input. On iOS/iPadOS Safari (and other
+   WebKit-based browsers there, e.g. Chrome/Firefox on iOS, since they all
+   use WebKit) that textarea's native blinking caret can still render on
+   top of Monaco's own custom cursor, producing two visible cursors.
+   Forcing its caret-color to transparent removes the native one while
+   leaving Monaco's own draggable/movable cursor untouched. */
+.monaco-editor textarea.inputarea {
+  caret-color: transparent !important;
+}
+
 .splitter {
   height: 6px;
   flex-shrink: 0;
