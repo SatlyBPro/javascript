@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>JS Runner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2218%22 fill=%22%23f7df1e%22/><text x=%2250%22 y=%2268%22 font-size=%2258%22 font-family=%22Arial,sans-serif%22 font-weight=%22bold%22 text-anchor=%22middle%22 fill=%22%23111%22>JS</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-badge">JS</span>
+      <span class="brand-name">Runner</span>
+    </div>
+
+    <div class="file-tabs" id="fileTabs">
+      <!-- tabs injected -->
+    </div>
+
+    <div class="topbar-actions">
+      <button class="icon-btn" id="newFileBtn" title="New file" aria-label="New file">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" title="Editor settings" aria-label="Editor settings">
+        <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+      <button class="run-btn" id="runBtn" title="Run (Ctrl + Alt + N)">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <span>Run</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main split: editor / console -->
+  <main class="workspace" id="workspace">
+    <section class="pane editor-pane" id="editorPane">
+      <div id="monacoContainer"></div>
+    </section>
+
+    <div class="splitter" id="splitter" role="separator" aria-orientation="horizontal" aria-label="Resize editor and console"></div>
+
+    <section class="pane console-pane" id="consolePane">
+      <div class="console-header">
+        <div class="console-tabs">
+          <button class="console-tab active" data-tab="console">Console</button>
+        </div>
+        <div class="console-actions">
+          <button class="icon-btn small" id="clearConsoleBtn" title="Clear console" aria-label="Clear console">
+            <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M19 6l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="console-output" id="consoleOutput"></div>
+      <form class="console-input-row" id="consoleInputRow">
+        <span class="prompt-caret">&gt;</span>
+        <input type="text" id="consoleInput" placeholder="Evaluate an expression..." autocomplete="off" autocapitalize="off" spellcheck="false" />
+      </form>
+    </section>
+  </main>
+
+  <!-- Mobile bottom toolbar -->
+  <div class="mobile-toolbar" id="mobileToolbar">
+    <button class="mkey" data-insert="(">( )</button>
+    <button class="mkey" data-insert="{">{ }</button>
+    <button class="mkey" data-insert="[">[ ]</button>
+    <button class="mkey" data-insert=";">;</button>
+    <button class="mkey" data-insert="=&gt;" data-raw="=>">=&gt;</button>
+    <button class="mkey" data-insert="&quot;" data-raw='"'>"</button>
+    <button class="mkey" data-tab-key="Tab">Tab</button>
+    <button class="mkey" data-nav="up" aria-label="Up">↑</button>
+    <button class="mkey" data-nav="down" aria-label="Down">↓</button>
+    <button class="mkey" data-nav="left" aria-label="Left">←</button>
+    <button class="mkey" data-nav="right" aria-label="Right">→</button>
+    <button class="mkey wide" id="mobileRunBtn">Run ▶</button>
+  </div>
+
+  <!-- Settings popover -->
+  <div class="popover" id="settingsPopover" hidden>
+    <div class="popover-row">
+      <label for="fontSizeRange">Font size</label>
+      <input type="range" id="fontSizeRange" min="11" max="24" step="1" value="14">
+      <span id="fontSizeValue">14</span>
+    </div>
+    <div class="popover-row">
+      <label for="themeSelect">Theme</label>
+      <select id="themeSelect">
+        <option value="vs-dark">Dark</option>
+        <option value="light">Light</option>
+        <option value="hc-black">High contrast</option>
+      </select>
+    </div>
+    <div class="popover-row">
+      <label for="minimapToggle">Minimap</label>
+      <input type="checkbox" id="minimapToggle">
+    </div>
+    <div class="popover-row">
+      <label for="wordWrapToggle">Word wrap</label>
+      <input type="checkbox" id="wordWrapToggle">
+    </div>
+  </div>
+
+  <!-- New file popover -->
+  <div class="popover" id="newFilePopover" hidden>
+    <div class="popover-row">
+      <input type="text" id="newFileName" placeholder="filename.js" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <button class="popover-confirm" id="newFileConfirm">Create</button>
+  </div>
+
+</div>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-badge">JS</div>
+  <div class="loading-text">Loading editor…</div>
+</div>
+
+<script src="https://unpkg.com/monaco-editor@0.52.2/min/vs/loader.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
