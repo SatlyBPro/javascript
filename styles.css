@@ -340,26 +340,27 @@ body {
   height: 100%;
   /* Let Monaco's own touch handling own gestures inside the editor
      (tap-to-place-cursor, drag-to-select/move-cursor, press-and-drag
-     scroll). Without this, iOS/iPadOS Safari can claim single-finger
-     touches for its own pan/zoom heuristics before Monaco ever sees
-     them, which is what makes cursor placement and dragging feel
-     unreliable on touch devices. pan-y still allows two-finger and
-     edge-swipe scroll gestures to pass through where Monaco doesn't
-     handle them itself. */
-  touch-action: pan-y;
+     scroll). touch-action: none hands every single-finger gesture inside
+     the editor to Monaco's JS touch handlers instead of letting the
+     browser claim vertical drags as native scrolling first. Monaco has
+     its own scrolling (including auto-scroll while dragging a selection
+     near the top/bottom edge), so it doesn't need the browser's native
+     pan-y scrolling here, and pan-y was exactly what stopped hold-and-drag
+     from ever reaching Monaco as a cursor-drag gesture. */
+  touch-action: none;
 }
 
 #monacoContainer .monaco-editor,
 #monacoContainer .overflow-guard,
 #monacoContainer .monaco-scrollable-element {
-  touch-action: pan-y;
+  touch-action: none;
 }
 
 /* The hidden native textarea Monaco uses to capture keyboard input must
    not fight the touch gesture either, or single-finger drags inside it
    can get eaten by Safari before Monaco's cursor/selection logic runs. */
 .monaco-editor textarea.inputarea {
-  touch-action: manipulation;
+  touch-action: none;
 }
 
 /* Monaco keeps a real (visually hidden) <textarea> under the hood to
