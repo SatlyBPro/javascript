@@ -889,31 +889,39 @@ console.log(user);
   });
 
   // --- iOS/iPadOS touch text-selection fix ---------------------------------
-  // Native Safari long-press-to-select and its OS context menu fight with
-  // Monaco's own input handling. This disables the native gesture on the
-  // editor's hidden input layer and adds a light custom touch handler that:
-  //   - lets touch+drag move the cursor (like a native text field)
-  //   - shows a small custom menu with Cut/Copy/Paste (or Select All/Paste
-  //     with no selection) on double-tap, instead of the OS menu
+  // Native Safari's long-press callout ("Copy/Look Up/Share...") fights with
+  // Monaco's own input handling, so we suppress just that OS-level gesture.
+  // Everything else — single tap to place the cursor, drag to select, and
+  // opening the on-screen keyboard — is left to Monaco's built-in touch
+  // handling, which already does this correctly. We only *add* a lightweight
+  // double-tap handler on top, for a custom Cut/Copy/Paste menu.
+  //
+  // IMPORTANT: focusing the editor (to raise the keyboard, especially in
+  // standalone/home-screen mode) only works when done synchronously inside
+  // the event that the user directly triggered. Never defer editor.focus()
+  // into a setTimeout/promise — iOS Safari will silently refuse to show the
+  // keyboard if it does.
   function setupIOSTouchTextHandling(editor) {
     const domNode = editor.getDomNode();
     if (!domNode) return;
 
-    // Kill the native callout ("Copy/Look Up/Share...") and long-press
-    // selection gesture across the whole editor surface.
+    // Kill the native callout menu, but do NOT disable webkitUserSelect or
+    // otherwise touch Monaco's own touch/pointer handling — that's what
+    // lets a tap place the cursor and a drag select text.
     domNode.style.webkitTouchCallout = "none";
-    domNode.style.webkitUserSelect = "none";
     domNode.addEventListener("contextmenu", (e) => e.preventDefault());
 
     const textarea = domNode.querySelector("textarea.inputarea");
     if (textarea) {
       textarea.style.webkitTouchCallout = "none";
-      textarea.style.webkitUserSelect = "none";
       textarea.addEventListener("contextmenu", (e) => e.preventDefault());
     }
 
+    // Double-tap detection only, purely additive: this never calls
+    // preventDefault() on touchstart or on a single-tap touchend, so
+    // Monaco's native tap-to-position and keyboard-raising behavior fires
+    // exactly as it normally would.
     let touchStart = null;
-    let longPressTimer = null;
     let lastTapTime = 0;
     let lastTapPos = null;
 
@@ -926,36 +934,9 @@ console.log(user);
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
       touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
-
-      // Long-press: start "dragging" the cursor from this point.
-      longPressTimer = setTimeout(() => {
-        const pos = posFromTouch(touch);
-        if (pos) {
-          editor.setPosition(pos);
-          editor.revealPosition(pos);
-          editor.focus();
-        }
-      }, 350);
     }, { passive: true });
 
-    domNode.addEventListener("touchmove", (e) => {
-      if (e.touches.length !== 1 || !touchStart) return;
-      const touch = e.touches[0];
-      const dx = Math.abs(touch.clientX - touchStart.x);
-      const dy = Math.abs(touch.clientY - touchStart.y);
-
-      // Once the finger has clearly moved, treat this as a drag: cancel the
-      // long-press callout timer and move the cursor to follow the finger.
-      if (dx > 6 || dy > 6) {
-        clearTimeout(longPressTimer);
-        const pos = posFromTouch(touch);
-        if (pos) editor.setPosition(pos);
-        e.preventDefault();
-      }
-    }, { passive: false });
-
     domNode.addEventListener("touchend", (e) => {
-      clearTimeout(longPressTimer);
       if (!touchStart) return;
 
       const touch = e.changedTouches[0];
@@ -973,10 +954,13 @@ console.log(user);
           Math.abs(touch.clientY - lastTapPos.y) < 20;
 
         if (isDoubleTap) {
+          // This IS a direct, synchronous result of the user's tap, so
+          // focus()/setPosition() here are safe and will raise the keyboard.
           e.preventDefault();
           const pos = posFromTouch(touch);
           if (pos) {
             editor.setPosition(pos);
+            editor.focus();
             const model = editor.getModel();
             const word = model.getWordAtPosition(pos);
             if (word) {
@@ -998,7 +982,7 @@ console.log(user);
       }
 
       touchStart = null;
-    });
+    }, { passive: false });
   }
 
   function showEditorTouchMenu(editor, x, y) {
