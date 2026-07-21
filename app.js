@@ -1047,23 +1047,30 @@ console.log(user);
       const wasTap = dt < 300 && dx < 6 && dy < 6;
 
       if (wasTap) {
-        // If the Cut/Copy/Paste-style menu was already open when this tap
-        // began, don't let it re-evaluate into opening the menu again.
-        // The menu's own dismiss listener already closes it on an outside
-        // tap; we just skip all the tap/double-tap/triple-tap menu-opening
-        // logic below so this same touch can't immediately reopen it.
-        if (menuWasOpenAtTouchStart) {
-          touchStart = null;
-          menuWasOpenAtTouchStart = false;
-          return;
-        }
-
         const now = Date.now();
         const isCloseToLastTap =
           lastTapPos &&
           Math.abs(touch.clientX - lastTapPos.x) < 20 &&
           Math.abs(touch.clientY - lastTapPos.y) < 20;
-        const isDoubleTap = now - lastTapTime < 300 && isCloseToLastTap;
+        const isPartOfTapSequence = now - lastTapTime < 300 && isCloseToLastTap;
+
+        // If the Cut/Copy/Paste-style menu was already open when this tap
+        // began, and this tap is NOT the next tap in an ongoing
+        // double/triple-tap sequence (e.g. the third tap landing on the
+        // menu that the second tap just opened), don't let it reopen the
+        // menu. The menu's own dismiss listener already closes it on an
+        // outside tap; we just skip the menu-opening logic below. But a
+        // tap that IS the continuation of the sequence (the triple-tap
+        // that should upgrade a word selection into a line selection)
+        // needs to fall through so isTripleTap can still fire.
+        if (menuWasOpenAtTouchStart && !isPartOfTapSequence) {
+          touchStart = null;
+          menuWasOpenAtTouchStart = false;
+          return;
+        }
+        menuWasOpenAtTouchStart = false;
+
+        const isDoubleTap = isPartOfTapSequence;
         // A third tap landing in the same spot within the same window as
         // the second — i.e. right after we've just handled a double-tap.
         const isTripleTap = isDoubleTap && tapCount === 2;
