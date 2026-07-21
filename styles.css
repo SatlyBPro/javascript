@@ -156,6 +156,14 @@ body {
   display: none;
 }
 
+.brand-version {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-dim);
+  opacity: 0.5;
+  margin-left: 2px;
+}
+
 @media (min-width: 640px) {
   .brand-name { display: inline; }
 }
