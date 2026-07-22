@@ -20,11 +20,9 @@
   --radius: 6px;
   --topbar-h: 48px;
   --safe-top: env(safe-area-inset-top, 0px);
-  --mobile-toolbar-h: 46px;
   --popover-bg: #2b2b2b;
   --popover-shadow: #00000066;
   --scrollbar-thumb: #4a4a4a;
-  --mkey-bg: #333335;
   --console-line-border: #ffffff08;
   --icon-hover-bg: #ffffff14;
   --tab-close-hover-bg: #ffffff1a;
@@ -53,7 +51,6 @@ html[data-theme="light"] {
   --popover-bg: #ffffff;
   --popover-shadow: #00000026;
   --scrollbar-thumb: #c4c4c4;
-  --mkey-bg: #e6e6e6;
   --console-line-border: #00000010;
   --icon-hover-bg: #00000012;
   --tab-close-hover-bg: #00000014;
@@ -81,7 +78,6 @@ html[data-theme="hc-black"] {
   --popover-bg: #000000;
   --popover-shadow: #ffffff33;
   --scrollbar-thumb: #6fc3ff;
-  --mkey-bg: #0f0f0f;
   --console-line-border: #ffffff22;
   --icon-hover-bg: #ffffff22;
   --tab-close-hover-bg: #ffffff33;
@@ -574,49 +570,6 @@ body {
 .console-line .val-key { color: #9cdcfe; }
 .console-line .val-fn { color: var(--purple); }
 
-/* ---------- Mobile toolbar ---------- */
-
-.mobile-toolbar {
-  display: none;
-  height: var(--mobile-toolbar-h);
-  min-height: var(--mobile-toolbar-h);
-  background: var(--bg-topbar);
-  border-top: 1px solid var(--border);
-  overflow-x: auto;
-  align-items: stretch;
-  flex-shrink: 0;
-  scrollbar-width: none;
-  padding: 0 4px;
-  gap: 4px;
-}
-.mobile-toolbar::-webkit-scrollbar { display: none; }
-
-.mkey {
-  flex-shrink: 0;
-  min-width: 42px;
-  margin: 6px 0;
-  background: var(--mkey-bg);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text-main);
-  font-family: "SF Mono", Consolas, monospace;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 10px;
-}
-.mkey:active { background: var(--accent); }
-.mkey.wide { min-width: 76px; font-weight: 700; background: var(--accent); font-family: inherit; font-size: 13px; }
-.mkey.wide:active { background: var(--accent-hover); }
-
-.mkey-space {
-  min-width: 64px;
-  flex: 0 0 auto;
-  font-size: 16px;
-  color: var(--text-dim);
-}
-
 /* ---------- Popovers ---------- */
 
 .popover {
@@ -806,19 +759,9 @@ body {
   .console-tab { font-size: 13px; }
   .console-output { font-size: 14px; }
   .prompt-caret { font-size: 15px; }
-
-  .mkey {
-    min-width: 48px;
-    font-size: 16px;
-  }
-  .mkey.wide { min-width: 88px; font-size: 14px; }
 }
 
 /* ---------- Mobile (narrow / phone) layout ---------- */
-
-@media (max-width: 760px), (pointer: coarse) {
-  .mobile-toolbar { display: flex; }
-}
 
 @media (max-width: 760px) {
   .topbar { padding: var(--safe-top) 6px 0; gap: 4px; }

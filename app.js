@@ -117,7 +117,6 @@ console.log(user);
   const brandVersionEl = $("#brandVersion");
   const fileTabsEl = $("#fileTabs");
   const runBtn = $("#runBtn");
-  const mobileRunBtn = $("#mobileRunBtn");
   const consoleOutput = $("#consoleOutput");
   const clearConsoleBtn = $("#clearConsoleBtn");
   const loadingScreen = $("#loadingScreen");
@@ -134,7 +133,6 @@ console.log(user);
   const newFilePopover = $("#newFilePopover");
   const newFileName = $("#newFileName");
   const newFileConfirm = $("#newFileConfirm");
-  const mobileToolbar = $("#mobileToolbar");
 
   // ---------------------------------------------------------------
   // Console rendering
@@ -949,62 +947,6 @@ console.log(user);
   // ---------------------------------------------------------------
 
   runBtn.addEventListener("click", runCode);
-  mobileRunBtn.addEventListener("click", runCode);
-
-  // ---------------------------------------------------------------
-  // Mobile toolbar (virtual keys for on-screen keyboard users)
-  // ---------------------------------------------------------------
-
-  mobileToolbar.addEventListener("click", function (e) {
-    const btn = e.target.closest(".mkey");
-    if (!btn || !editor) return;
-
-    if (btn.dataset.tabKey) {
-      editor.trigger("keyboard", "tab", null);
-      editor.focus();
-      return;
-    }
-    if (btn.dataset.nav) {
-      const pos = editor.getPosition();
-      const map = {
-        up: { lineNumber: Math.max(1, pos.lineNumber - 1), column: pos.column },
-        down: { lineNumber: pos.lineNumber + 1, column: pos.column },
-        left: { lineNumber: pos.lineNumber, column: Math.max(1, pos.column - 1) },
-        right: { lineNumber: pos.lineNumber, column: pos.column + 1 }
-      };
-      editor.setPosition(map[btn.dataset.nav]);
-      editor.focus();
-      editor.revealPositionInCenterIfOutsideViewport(map[btn.dataset.nav]);
-      return;
-    }
-    const text = btn.dataset.raw || btn.dataset.insert;
-    if (text) {
-      const sel = editor.getSelection();
-      // Bracket/quote keys auto-close: with nothing selected, insert both
-      // halves and put the cursor between them, matching how typing "("
-      // normally behaves in the editor (autoClosingBrackets/Quotes only
-      // fires for real keyboard input, not for programmatic edits like
-      // this, so the toolbar has to do it manually). With text selected,
-      // wrap the selection in the pair instead, cursor left at the end of
-      // the now-wrapped selection, same as typical editor bracket-wrap.
-      const pairs = { "(": ")", "{": "}", "[": "]", "\"": "\"" };
-      const closer = pairs[text];
-      if (closer) {
-        if (sel.isEmpty()) {
-          const pos = sel.getStartPosition();
-          editor.executeEdits("mobile-toolbar", [{ range: sel, text: text + closer, forceMoveMarkers: true }]);
-          editor.setPosition({ lineNumber: pos.lineNumber, column: pos.column + text.length });
-        } else {
-          const model = editor.getModel();
-          const inner = model.getValueInRange(sel);
-          editor.executeEdits("mobile-toolbar", [{ range: sel, text: text + inner + closer, forceMoveMarkers: true }]);
-        }
-      } else {
-        editor.executeEdits("mobile-toolbar", [{ range: sel, text: text, forceMoveMarkers: true }]);
-      }
-      editor.focus();
-    }
-  });
 
   // --- iOS/iPadOS touch text-selection fix ---------------------------------
   // Native Safari's long-press callout ("Copy/Look Up/Share...") fights with
@@ -1653,7 +1595,7 @@ console.log(user);
 
   // Prevent iOS bounce/zoom weirdness on double-tap of toolbar buttons.
   document.addEventListener("dblclick", function (e) {
-    if (e.target.closest(".mkey") || e.target.closest(".icon-btn") || e.target.closest(".run-btn")) {
+    if (e.target.closest(".icon-btn") || e.target.closest(".run-btn")) {
       e.preventDefault();
     }
   });
