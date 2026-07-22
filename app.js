@@ -1190,6 +1190,19 @@ console.log(user);
       textarea.addEventListener("contextmenu", (e) => e.preventDefault());
     }
 
+    // Close the Cut/Copy/Paste/Select menu as soon as the user starts
+    // typing, backspacing, or otherwise editing/moving via the keyboard -
+    // it's meant to disappear the instant text input resumes, not linger
+    // until an unrelated tap elsewhere dismisses it.
+    editor.onDidChangeModelContent(function () {
+      const openMenu = document.getElementById("editorTouchMenu");
+      if (openMenu) closeEditorTouchMenu(openMenu);
+    });
+    editor.onKeyDown(function () {
+      const openMenu = document.getElementById("editorTouchMenu");
+      if (openMenu) closeEditorTouchMenu(openMenu);
+    });
+
     // Double-tap detection only, purely additive: this never calls
     // preventDefault() on touchstart or on a single-tap touchend, so
     // Monaco's native tap-to-position and keyboard-raising behavior fires
