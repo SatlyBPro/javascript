@@ -752,22 +752,44 @@ console.log(user);
   // cheap) and compare its embedded version string to the one currently
   // rendered on screen. If they differ, silently do the same cache-clear
   // + hard reload the manual button does.
+  const versionStatusEl = $("#versionStatus");
+
+  function setVersionStatus(state, label, title) {
+    if (!versionStatusEl) return;
+    versionStatusEl.dataset.state = state;
+    versionStatusEl.title = title || label;
+    const labelEl = versionStatusEl.querySelector(".version-status-label");
+    if (labelEl) labelEl.textContent = label;
+  }
+
+  versionStatusEl && versionStatusEl.addEventListener("click", function () {
+    if (versionStatusEl.dataset.state === "stale") refreshApp();
+  });
+
   async function checkForStaleVersion() {
+    setVersionStatus("checking", "Checking…", "Checking for updates…");
     try {
       const url = new URL("index.html", window.location.href);
       url.searchParams.set("_v", Date.now());
       const res = await fetch(url.toString(), { cache: "no-store" });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setVersionStatus("offline", "Offline", "Couldn't check for updates.");
+        return;
+      }
       const html = await res.text();
       const match = html.match(/id="brandVersion">([^<]+)</);
       const latestVersion = match ? match[1].trim() : null;
       const currentVersion = brandVersionEl ? brandVersionEl.textContent.trim() : null;
 
       if (latestVersion && currentVersion && latestVersion !== currentVersion) {
-        logSystem("Newer version detected (" + currentVersion + " → " + latestVersion + "). Updating…");
+        setVersionStatus("stale", "Update ready", "A newer version (" + latestVersion + ") is ready. Tap to update.");
+        logSystem("Newer version detected (" + currentVersion + " -> " + latestVersion + "). Updating...");
         await refreshApp();
+      } else {
+        setVersionStatus("latest", "Up to date", "You're on the latest version (" + currentVersion + ").");
       }
     } catch (e) {
+      setVersionStatus("offline", "Offline", "Couldn't check for updates (offline?).");
       log("checkForStaleVersion failed: " + e.message);
     }
   }
