@@ -1022,6 +1022,20 @@ console.log(user);
     let lastTapPos = null;
     let tapCount = 0;
 
+    // Tracks whether Monaco changed the selection to something non-empty
+    // on its own (its native double-tap-to-select-word gesture) during the
+    // current touch, since our last explicit setSelection/setPosition
+    // call. This is reset at the start of every touch and only set by
+    // Monaco's own event, so - unlike re-reading editor.getSelection() at
+    // touchend, which can just as easily still be reporting a stale
+    // selection from BEFORE this tap collapsed it - it can only ever be
+    // true because Monaco itself just selected something during this
+    // exact touch.
+    let nativeSelectionDuringTouch = false;
+    editor.onDidChangeCursorSelection((ev) => {
+      if (!ev.selection.isEmpty()) nativeSelectionDuringTouch = true;
+    });
+
     const posFromTouch = (touch) => {
       const target = editor.getTargetAtClientPoint(touch.clientX, touch.clientY);
       return target && target.position ? target.position : null;
@@ -1049,6 +1063,7 @@ console.log(user);
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
       touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+      nativeSelectionDuringTouch = false;
     }, { passive: true });
 
     domNode.addEventListener("touchend", (e) => {
@@ -1167,27 +1182,27 @@ console.log(user);
         } else {
           // Single-tap guard: this is either a genuine first tap (nothing
           // to show yet, wait and see if a second tap follows) or Monaco's
-          // own native double-tap gesture just silently selected a word
-          // out from under us on THIS same touchend, without our
-          // isDoubleTap check above having caught it. Re-reading the
-          // selection fresh right now, after Monaco has fully processed
-          // this touchend, catches that case reliably: a real selection
-          // here always means show Cut/Copy/Paste for it. A genuinely
-          // empty selection is left alone to await a possible second tap
-          // and shows nothing - it must NOT fall back to opening a menu,
-          // since that's what caused the bogus "Cut/Copy/Paste with
-          // nothing selected" bug on plain cursor-move taps.
+          // own native double-tap-to-select-word gesture just selected a
+          // word during THIS touch, without our isDoubleTap check above
+          // having caught it. We only trust nativeSelectionDuringTouch for
+          // that - NOT a plain re-read of editor.getSelection() - because
+          // a plain re-read can't tell "Monaco just selected this" apart
+          // from "this is stale leftover selection state from before the
+          // tap," which is exactly what caused Cut/Copy/Paste to
+          // incorrectly reopen over nothing on a simple tap-away.
           tapCount = isCloseToLastTap ? tapCount + 1 : 1;
           lastTapTime = now;
           lastTapPos = { x: touch.clientX, y: touch.clientY };
 
-          const sel = editor.getSelection();
-          if (sel && !sel.isEmpty()) {
-            editor.focus();
-            shouldShowMenu = true;
-            tapCount = 0;
-            lastTapTime = 0;
-            lastTapPos = null;
+          if (nativeSelectionDuringTouch) {
+            const sel = editor.getSelection();
+            if (sel && !sel.isEmpty()) {
+              editor.focus();
+              shouldShowMenu = true;
+              tapCount = 0;
+              lastTapTime = 0;
+              lastTapPos = null;
+            }
           }
         }
 
