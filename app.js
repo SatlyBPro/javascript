@@ -67,6 +67,9 @@ console.log(user);
 
   let files = [];
   let activeFileId = null;
+  const fileModels = Object.create(null); // id -> Monaco model, cached so switching tabs never creates duplicate Uris
+  let draggingTabId = null;
+  let renamingTabId = null;
 
   // ---------------------------------------------------------------
   // Persistence
@@ -582,20 +585,76 @@ console.log(user);
     return files.find(function (f) { return f.id === activeFileId; }) || files[0];
   }
 
+  // Every file gets exactly one Monaco model for its whole lifetime, cached
+  // here and reused on every switch. The Uri includes the file id (stable,
+  // unique, never reused even after renames) so Monaco never sees a
+  // duplicate Uri, which is what silently broke repeated tab switches before.
+  function getOrCreateModel(f) {
+    let model = fileModels[f.id];
+    if (model && !model.isDisposed()) return model;
+    model = monacoRef.editor.createModel(f.code, "javascript", monacoRef.Uri.parse("file:///" + f.id + "/" + f.name));
+    fileModels[f.id] = model;
+    return model;
+  }
+
+  function disposeModel(id) {
+    const model = fileModels[id];
+    if (model) {
+      if (!model.isDisposed()) model.dispose();
+      delete fileModels[id];
+    }
+  }
+
   function renderTabs() {
     fileTabsEl.innerHTML = "";
     files.forEach(function (f) {
       const tab = document.createElement("div");
-      tab.className = "file-tab" + (f.id === activeFileId ? " active" : "");
+      tab.className = "file-tab" + (f.id === activeFileId ? " active" : "") + (f.id === draggingTabId ? " dragging" : "");
       tab.dataset.id = f.id;
+      tab.draggable = renamingTabId !== f.id;
 
       const dot = document.createElement("span");
       dot.className = "tab-dot";
-      const name = document.createElement("span");
-      name.className = "tab-name";
-      name.textContent = f.name;
       tab.appendChild(dot);
-      tab.appendChild(name);
+
+      if (f.id === renamingTabId) {
+        const input = document.createElement("input");
+        input.className = "tab-name-input";
+        input.type = "text";
+        input.value = f.name;
+        input.spellcheck = false;
+        input.autocapitalize = "off";
+        tab.appendChild(input);
+
+        function commit() {
+          const val = input.value.trim();
+          if (val) renameFile(f.id, val);
+          renamingTabId = null;
+          renderTabs();
+        }
+        function cancel() {
+          renamingTabId = null;
+          renderTabs();
+        }
+        input.addEventListener("keydown", function (ev) {
+          ev.stopPropagation();
+          if (ev.key === "Enter") { ev.preventDefault(); commit(); }
+          else if (ev.key === "Escape") { ev.preventDefault(); cancel(); }
+        });
+        input.addEventListener("click", function (ev) { ev.stopPropagation(); });
+        input.addEventListener("blur", commit);
+        setTimeout(function () { input.focus(); input.select(); }, 0);
+      } else {
+        const name = document.createElement("span");
+        name.className = "tab-name";
+        name.textContent = f.name;
+        name.addEventListener("dblclick", function (ev) {
+          ev.stopPropagation();
+          renamingTabId = f.id;
+          renderTabs();
+        });
+        tab.appendChild(name);
+      }
 
       if (files.length > 1) {
         const close = document.createElement("span");
@@ -608,9 +667,103 @@ console.log(user);
         tab.appendChild(close);
       }
 
-      tab.addEventListener("click", function () { switchToFile(f.id); });
+      tab.addEventListener("click", function () {
+        if (renamingTabId && renamingTabId !== f.id) return;
+        switchToFile(f.id);
+      });
+
+      // Keyboard rename trigger: F2 on a focused/active tab.
+      tab.tabIndex = 0;
+      tab.addEventListener("keydown", function (ev) {
+        if (ev.key === "F2" && renamingTabId !== f.id) {
+          ev.preventDefault();
+          renamingTabId = f.id;
+          renderTabs();
+        }
+      });
+
+      attachDragHandlers(tab, f.id);
       fileTabsEl.appendChild(tab);
     });
+  }
+
+  // --- Drag to reorder, with a FLIP animation on drop ---
+  function attachDragHandlers(tab, id) {
+    tab.addEventListener("dragstart", function (ev) {
+      draggingTabId = id;
+      tab.classList.add("dragging");
+      ev.dataTransfer.effectAllowed = "move";
+      try { ev.dataTransfer.setData("text/plain", id); } catch (e) {}
+    });
+
+    tab.addEventListener("dragend", function () {
+      draggingTabId = null;
+      renderTabs();
+    });
+
+    tab.addEventListener("dragover", function (ev) {
+      if (!draggingTabId || draggingTabId === id) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = "move";
+      const rect = tab.getBoundingClientRect();
+      const before = ev.clientX < rect.left + rect.width / 2;
+      const fromIdx = files.findIndex(function (f) { return f.id === draggingTabId; });
+      const toIdx = files.findIndex(function (f) { return f.id === id; });
+      if (fromIdx === -1 || toIdx === -1) return;
+      const targetIdx = before ? toIdx : toIdx + 1;
+      const insertIdx = targetIdx > fromIdx ? targetIdx - 1 : targetIdx;
+      if (insertIdx === fromIdx) return;
+      reorderFiles(fromIdx, insertIdx);
+    });
+
+    tab.addEventListener("drop", function (ev) {
+      ev.preventDefault();
+    });
+  }
+
+  function reorderFiles(fromIdx, toIdx) {
+    const firstRects = recordTabRects();
+    const [moved] = files.splice(fromIdx, 1);
+    files.splice(toIdx, 0, moved);
+    renderTabs();
+    playFlipAnimation(firstRects);
+    saveFiles();
+  }
+
+  function recordTabRects() {
+    const rects = {};
+    fileTabsEl.querySelectorAll(".file-tab").forEach(function (el) {
+      rects[el.dataset.id] = el.getBoundingClientRect();
+    });
+    return rects;
+  }
+
+  function playFlipAnimation(firstRects) {
+    fileTabsEl.querySelectorAll(".file-tab").forEach(function (el) {
+      const first = firstRects[el.dataset.id];
+      if (!first) return;
+      const last = el.getBoundingClientRect();
+      const dx = first.left - last.left;
+      if (!dx) return;
+      el.style.transition = "none";
+      el.style.transform = "translateX(" + dx + "px)";
+      requestAnimationFrame(function () {
+        el.style.transition = "transform 180ms ease";
+        el.style.transform = "";
+      });
+      el.addEventListener("transitionend", function handler() {
+        el.style.transition = "";
+        el.removeEventListener("transitionend", handler);
+      });
+    });
+  }
+
+  function renameFile(id, newName) {
+    const f = files.find(function (x) { return x.id === id; });
+    if (!f) return;
+    if (!/\.jsx?$/.test(newName)) newName += ".js";
+    f.name = newName;
+    saveFiles();
   }
 
   function switchToFile(id) {
@@ -618,7 +771,7 @@ console.log(user);
     saveCurrentEditorValue();
     activeFileId = id;
     const f = getActiveFile();
-    const model = monacoRef.editor.createModel(f.code, "javascript", monacoRef.Uri.parse("file:///" + f.name));
+    const model = getOrCreateModel(f);
     editor.setModel(model);
     renderTabs();
     saveFiles();
@@ -632,11 +785,13 @@ console.log(user);
   function closeFile(id) {
     const idx = files.findIndex(function (f) { return f.id === id; });
     if (idx === -1 || files.length <= 1) return;
+    if (activeFileId === id) saveCurrentEditorValue();
     files.splice(idx, 1);
+    disposeModel(id);
     if (activeFileId === id) {
       const next = files[Math.max(0, idx - 1)];
       activeFileId = next.id;
-      const model = monacoRef.editor.createModel(next.code, "javascript", monacoRef.Uri.parse("file:///" + next.name + "?" + Date.now()));
+      const model = getOrCreateModel(next);
       editor.setModel(model);
     }
     renderTabs();
@@ -651,7 +806,7 @@ console.log(user);
     files.push(newFile);
     saveCurrentEditorValue();
     activeFileId = id;
-    const model = monacoRef.editor.createModel("", "javascript", monacoRef.Uri.parse("file:///" + name + "?" + Date.now()));
+    const model = getOrCreateModel(newFile);
     editor.setModel(model);
     renderTabs();
     saveFiles();
@@ -1515,11 +1670,7 @@ console.log(user);
     activeFileId = loaded.activeFileId;
     const activeFile = getActiveFile();
 
-    const model = monaco.editor.createModel(
-      activeFile.code,
-      "javascript",
-      monaco.Uri.parse("file:///" + activeFile.name)
-    );
+    const model = getOrCreateModel(activeFile);
 
     editor = monaco.editor.create(document.getElementById("monacoContainer"), {
       model: model,

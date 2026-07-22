@@ -356,6 +356,22 @@ body {
 .file-tab .tab-close:hover { opacity: 1; background: var(--tab-close-hover-bg); }
 .file-tab .tab-close svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 2; fill: none; }
 
+.file-tab.dragging {
+  opacity: 0.4;
+}
+
+.file-tab .tab-name-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-main);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 0;
+  min-width: 40px;
+  width: 12ch;
+}
+
 .topbar-actions {
   display: flex;
   align-items: center;
