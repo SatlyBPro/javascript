@@ -1064,6 +1064,16 @@ console.log(user);
       const touch = e.touches[0];
       touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
       nativeSelectionDuringTouch = false;
+
+      // Close any open menu right away, on touchstart rather than waiting
+      // for touchend. This matters when the new tap visually lands on/near
+      // where the still-open menu is floating: closing it here, before the
+      // finger even lifts, means the menu's pointer-events are already
+      // being turned off (see is-closing in styles.css) by the time this
+      // same touch would otherwise have been intercepted by the menu's own
+      // DOM instead of reaching the editor underneath.
+      const openMenu = document.getElementById("editorTouchMenu");
+      if (openMenu) closeEditorTouchMenu(openMenu);
     }, { passive: true });
 
     domNode.addEventListener("touchend", (e) => {
@@ -1083,18 +1093,8 @@ console.log(user);
           Math.abs(touch.clientY - lastTapPos.y) < 20;
         const isPartOfTapSequence = now - lastTapTime < 300 && isCloseToLastTap;
 
-        // If our menu is currently open, close it now regardless of what
-        // this tap turns out to be. We deliberately do NOT swallow/return
-        // early here: doing that used to stop this tap from ever reaching
-        // the double/triple-tap tracking below, which broke the very next
-        // double-tap (its "first tap" got eaten by this branch, so the
-        // real second tap looked like a lone first tap instead, and the
-        // menu that eventually opened - if any - was for stale/wrong
-        // selection state). Letting every tap flow through the same
-        // detection logic below, every time, is what keeps behavior
-        // identical whether or not a menu happened to be open already.
-        const openMenu = document.getElementById("editorTouchMenu");
-        if (openMenu) closeEditorTouchMenu(openMenu);
+        // Menu (if any) was already closed in touchstart above, so a tap
+        // landing on/near it is not intercepted by its own DOM.
 
         const isDoubleTap = isPartOfTapSequence;
         // A third tap landing in the same spot within the same window as
