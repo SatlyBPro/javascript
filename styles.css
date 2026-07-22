@@ -662,6 +662,10 @@ body {
   animation: confirm-fade-in 120ms ease;
 }
 
+.confirm-overlay[hidden] {
+  display: none;
+}
+
 @keyframes confirm-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
