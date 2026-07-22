@@ -1098,12 +1098,12 @@ console.log(user);
 
         // Tapping exactly where the cursor already is (editor focused,
         // cursor visibly blinking there, nothing currently selected) opens
-        // the menu directly with no selection change — Select All/Paste.
-        // This requires an EXACT column match on the cursor's line, AND
-        // the tap must visually land within that line's row (not just
-        // resolve there via Monaco's position clamping). A tap below the
-        // cursor's row just moves the cursor to the clamped position, same
-        // as before, and the menu does not open.
+        // the menu directly with no selection change. This requires an
+        // EXACT column match on the cursor's line, AND the tap must
+        // visually land within that line's row (not just resolve there via
+        // Monaco's position clamping). A tap below the cursor's row just
+        // moves the cursor to the clamped position, same as before, and
+        // the menu does not open.
         let isTapOnExistingCursor = false;
         if (!isDoubleTap && editor.hasTextFocus()) {
           const pos = posFromTouch(touch);
@@ -1119,6 +1119,13 @@ console.log(user);
           }
         }
 
+        // Only ever a candidate to open the menu at all if this tap is
+        // one of the three recognized gestures below. A first tap that's
+        // just building toward a possible double/triple-tap (the final
+        // `else` branch) does NOT open anything yet - see the "single-tap
+        // guard" comment further down for why.
+        let shouldShowMenu = false;
+
         if (isTripleTap) {
           // Select the whole line that was tapped.
           e.preventDefault();
@@ -1132,14 +1139,13 @@ console.log(user);
               endColumn: model.getLineMaxColumn(pos.lineNumber),
             });
             editor.focus();
-            showEditorTouchMenu(editor, touch.clientX, touch.clientY);
+            shouldShowMenu = true;
           }
           tapCount = 0;
           lastTapTime = 0;
           lastTapPos = null;
         } else if (isDoubleTap) {
-          // Select the word under the tap — Cut/Copy/Paste, since there's
-          // now a real selection.
+          // Select the word under the tap.
           e.preventDefault();
           const pos = posFromTouch(touch);
           if (pos) {
@@ -1155,42 +1161,51 @@ console.log(user);
                 endColumn: word.endColumn,
               });
             }
-            showEditorTouchMenu(editor, touch.clientX, touch.clientY);
+            shouldShowMenu = true;
           }
           tapCount = 2;
           lastTapTime = now;
           lastTapPos = { x: touch.clientX, y: touch.clientY };
         } else if (isTapOnExistingCursor) {
-          // No selection change — just open the menu as-is (empty
-          // selection) so it shows Select All/Paste.
+          // No selection change - just open the menu as-is.
           e.preventDefault();
           editor.focus();
-          showEditorTouchMenu(editor, touch.clientX, touch.clientY);
+          shouldShowMenu = true;
           tapCount = 0;
           lastTapTime = 0;
           lastTapPos = null;
         } else {
+          // Single-tap guard: this is either a genuine first tap (nothing
+          // to show yet, wait and see if a second tap follows) or Monaco's
+          // own native double-tap gesture just silently selected a word
+          // out from under us on THIS same touchend, without our
+          // isDoubleTap check above having caught it (that's the race that
+          // used to cause "word highlighted, no menu" and "word
+          // highlighted, wrong menu"). Re-reading the selection fresh
+          // right now, after Monaco has fully processed this touchend,
+          // catches that case reliably: a real selection here always means
+          // show Cut/Copy/Paste for it, full stop. Only a genuinely empty
+          // selection is left alone to await a possible second tap.
           tapCount = isCloseToLastTap ? tapCount + 1 : 1;
           lastTapTime = now;
           lastTapPos = { x: touch.clientX, y: touch.clientY };
 
-          // Safety net: Monaco has its own native double-tap word-selection
-          // gesture that can fire independently of (and slightly out of
-          // sync with) our own double-tap detection above. That can leave
-          // a word highlighted on screen without our isDoubleTap branch
-          // ever having run, so the Cut/Copy/Paste menu never appears even
-          // though there's a real selection sitting there. Whenever a tap
-          // falls through to here and we end up with a non-empty
-          // selection, always show the menu for it - a highlighted word
-          // should never be left without its menu.
           const sel = editor.getSelection();
           if (sel && !sel.isEmpty()) {
             editor.focus();
-            showEditorTouchMenu(editor, touch.clientX, touch.clientY);
+            shouldShowMenu = true;
             tapCount = 0;
             lastTapTime = 0;
             lastTapPos = null;
           }
+        }
+
+        if (shouldShowMenu) {
+          // Re-read selection fresh right before deciding/building the
+          // menu (rather than trusting isDoubleTap/isTripleTap/etc above),
+          // so the menu content always matches reality even if Monaco
+          // changed the selection asynchronously in between.
+          showEditorTouchMenu(editor, touch.clientX, touch.clientY);
         }
       }
 
