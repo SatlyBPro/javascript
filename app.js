@@ -1180,6 +1180,18 @@ console.log(user);
     }, { passive: false });
   }
 
+  // How long the closing animation runs, in ms. Kept in sync with the
+  // .editor-touch-menu.is-closing transition duration in styles.css.
+  const TOUCH_MENU_CLOSE_MS = 100;
+
+  function closeEditorTouchMenu(menu) {
+    if (!menu || menu.dataset.closing) return;
+    menu.dataset.closing = "1";
+    menu.classList.remove("is-open");
+    menu.classList.add("is-closing");
+    setTimeout(() => menu.remove(), TOUCH_MENU_CLOSE_MS);
+  }
+
   function showEditorTouchMenu(editor, x, y) {
     const existing = document.getElementById("editorTouchMenu");
     if (existing) existing.remove();
@@ -1208,20 +1220,38 @@ console.log(user);
       btn.addEventListener("touchend", (e) => {
         e.preventDefault();
         handler();
-        menu.remove();
+        closeEditorTouchMenu(menu);
       });
       menu.appendChild(btn);
     });
 
     document.body.appendChild(menu);
 
+    // Anchor the menu at a consistent Y above the cursor's own text row
+    // (not the raw touch point), so it always lands in the same place
+    // relative to the cursor regardless of exactly where within that row
+    // the tap/double-tap/triple-tap landed. X still follows the tap so it
+    // stays near the finger horizontally.
+    const domNode = editor.getDomNode();
+    const cursorPos = editor.getPosition();
     const rect = menu.getBoundingClientRect();
+    let anchorY = y;
+    if (domNode && cursorPos) {
+      const domRect = domNode.getBoundingClientRect();
+      const lineTop = domRect.top + editor.getTopForLineNumber(cursorPos.lineNumber) - editor.getScrollTop();
+      anchorY = lineTop;
+    }
     menu.style.left = Math.max(8, x - rect.width / 2) + "px";
-    menu.style.top = Math.max(8, y - rect.height - 12) + "px";
+    menu.style.top = Math.max(8, anchorY - rect.height - 12) + "px";
+
+    // Animate in on the next frame (so the initial transform/opacity in
+    // CSS is actually applied first, giving the transition something to
+    // animate from).
+    requestAnimationFrame(() => menu.classList.add("is-open"));
 
     const dismiss = (e) => {
       if (!menu.contains(e.target)) {
-        menu.remove();
+        closeEditorTouchMenu(menu);
         document.removeEventListener("touchstart", dismiss);
       }
     };
