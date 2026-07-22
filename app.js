@@ -1,6 +1,12 @@
 (function () {
   "use strict";
 
+  // True for touch-capable devices (iOS/iPadOS/Android/etc). Used to keep
+  // the custom touch text-selection handling (and its contextmenu
+  // suppression) off of mouse/trackpad devices, so right-click still works
+  // normally on desktop.
+  var isTouchDevice = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+
   // ---------------------------------------------------------------
   // Stable app height (see the --app-height comment in styles.css)
   // ---------------------------------------------------------------
@@ -1167,6 +1173,8 @@ console.log(user);
   // into a setTimeout/promise — iOS Safari will silently refuse to show the
   // keyboard if it does.
   function setupIOSTouchTextHandling(editor) {
+    if (!isTouchDevice) return;
+
     const domNode = editor.getDomNode();
     if (!domNode) return;
 
@@ -1766,11 +1774,12 @@ console.log(user);
       snippetSuggestions: "inline",
       padding: { top: 12 },
       // Monaco has its own built-in right-click/long-press menu (Go to
-      // Definition, Go to References, Command Palette, ...) that's separate
-      // from — and opens independently of — the native browser contextmenu
-      // event we suppress above. Turn it off entirely; our custom
-      // double-tap Cut/Copy/Paste menu is the only context menu we want.
-      contextmenu: false
+      // Definition, Go to References, Command Palette, ...) that opens
+      // independently of the native browser contextmenu event. On touch
+      // devices we turn it off, since our custom double-tap Cut/Copy/Paste
+      // menu is the only context menu we want there. On desktop we leave
+      // it on, so right-click keeps working normally.
+      contextmenu: isTouchDevice ? false : true
     });
 
     setupIOSTouchTextHandling(editor);
