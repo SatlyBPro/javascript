@@ -1598,6 +1598,9 @@ console.log(user);
       } else if (kind === "paste") {
         const clip = await navigator.clipboard.readText();
         editor.executeEdits("touch-paste", [{ range: selection, text: clip }]);
+        // executeEdits leaves the newly-inserted text selected by default;
+        // collapse to a plain cursor at the end of it instead.
+        editor.setPosition(editor.getSelection().getEndPosition());
       }
     } catch (err) {
       console.warn("Clipboard action failed:", err);
