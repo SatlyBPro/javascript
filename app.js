@@ -1045,17 +1045,10 @@ console.log(user);
       return y >= contentTop && y < contentTop + lineHeight;
     };
 
-    let menuWasOpenAtTouchStart = false;
-
     domNode.addEventListener("touchstart", (e) => {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
       touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
-      // The menu's own dismiss listener (touchstart on document) also
-      // fires for this same touch and may remove the menu before our
-      // touchend handler below runs, so capture the "was it open" state
-      // now, before that removal happens.
-      menuWasOpenAtTouchStart = !!document.getElementById("editorTouchMenu");
     }, { passive: true });
 
     domNode.addEventListener("touchend", (e) => {
@@ -1075,21 +1068,18 @@ console.log(user);
           Math.abs(touch.clientY - lastTapPos.y) < 20;
         const isPartOfTapSequence = now - lastTapTime < 300 && isCloseToLastTap;
 
-        // If the Cut/Copy/Paste-style menu was already open when this tap
-        // began, and this tap is NOT the next tap in an ongoing
-        // double/triple-tap sequence (e.g. the third tap landing on the
-        // menu that the second tap just opened), don't let it reopen the
-        // menu. The menu's own dismiss listener already closes it on an
-        // outside tap; we just skip the menu-opening logic below. But a
-        // tap that IS the continuation of the sequence (the triple-tap
-        // that should upgrade a word selection into a line selection)
-        // needs to fall through so isTripleTap can still fire.
-        if (menuWasOpenAtTouchStart && !isPartOfTapSequence) {
-          touchStart = null;
-          menuWasOpenAtTouchStart = false;
-          return;
-        }
-        menuWasOpenAtTouchStart = false;
+        // If our menu is currently open, close it now regardless of what
+        // this tap turns out to be. We deliberately do NOT swallow/return
+        // early here: doing that used to stop this tap from ever reaching
+        // the double/triple-tap tracking below, which broke the very next
+        // double-tap (its "first tap" got eaten by this branch, so the
+        // real second tap looked like a lone first tap instead, and the
+        // menu that eventually opened - if any - was for stale/wrong
+        // selection state). Letting every tap flow through the same
+        // detection logic below, every time, is what keeps behavior
+        // identical whether or not a menu happened to be open already.
+        const openMenu = document.getElementById("editorTouchMenu");
+        if (openMenu) closeEditorTouchMenu(openMenu);
 
         const isDoubleTap = isPartOfTapSequence;
         // A third tap landing in the same spot within the same window as
@@ -1179,13 +1169,14 @@ console.log(user);
           // to show yet, wait and see if a second tap follows) or Monaco's
           // own native double-tap gesture just silently selected a word
           // out from under us on THIS same touchend, without our
-          // isDoubleTap check above having caught it (that's the race that
-          // used to cause "word highlighted, no menu" and "word
-          // highlighted, wrong menu"). Re-reading the selection fresh
-          // right now, after Monaco has fully processed this touchend,
-          // catches that case reliably: a real selection here always means
-          // show Cut/Copy/Paste for it, full stop. Only a genuinely empty
-          // selection is left alone to await a possible second tap.
+          // isDoubleTap check above having caught it. Re-reading the
+          // selection fresh right now, after Monaco has fully processed
+          // this touchend, catches that case reliably: a real selection
+          // here always means show Cut/Copy/Paste for it. A genuinely
+          // empty selection is left alone to await a possible second tap
+          // and shows nothing - it must NOT fall back to opening a menu,
+          // since that's what caused the bogus "Cut/Copy/Paste with
+          // nothing selected" bug on plain cursor-move taps.
           tapCount = isCloseToLastTap ? tapCount + 1 : 1;
           lastTapTime = now;
           lastTapPos = { x: touch.clientX, y: touch.clientY };
