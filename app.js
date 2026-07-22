@@ -1249,6 +1249,20 @@ console.log(user);
       return y >= contentTop && y < contentTop + lineHeight;
     };
 
+    // Same idea as isTouchYInLineRow, but for X: getTargetAtClientPoint
+    // clamps horizontally too, so a tap far to the right of a cursor
+    // sitting at end-of-line can still resolve to that same column. Only
+    // count a tap as "on the cursor" if it's also within a small pixel
+    // distance of the cursor's actual on-screen X position.
+    const CURSOR_TAP_X_TOLERANCE = 24;
+    const isTouchXNearCursor = (touch, position) => {
+      const coords = editor.getScrolledVisiblePosition(position);
+      if (!coords) return false;
+      const domRect = domNode.getBoundingClientRect();
+      const cursorX = domRect.left + coords.left;
+      return Math.abs(touch.clientX - cursorX) <= CURSOR_TAP_X_TOLERANCE;
+    };
+
     domNode.addEventListener("touchstart", (e) => {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
@@ -1308,7 +1322,8 @@ console.log(user);
             pos && cursorPos && selection && selection.isEmpty() &&
             pos.lineNumber === cursorPos.lineNumber &&
             pos.column === cursorPos.column &&
-            isTouchYInLineRow(touch, cursorPos.lineNumber)
+            isTouchYInLineRow(touch, cursorPos.lineNumber) &&
+            isTouchXNearCursor(touch, cursorPos)
           ) {
             isTapOnExistingCursor = true;
           }
