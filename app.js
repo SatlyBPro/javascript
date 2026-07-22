@@ -1263,6 +1263,28 @@ console.log(user);
       return Math.abs(touch.clientX - cursorX) <= CURSOR_TAP_X_TOLERANCE;
     };
 
+    // Same idea as isTouchYInLineRow, but also checks the tap isn't way
+    // out past the actual end of the line's text horizontally (e.g.
+    // tapping in empty space well to the right of a short line, or
+    // anywhere in an empty editor with no text at all) - getTargetAtClientPoint
+    // clamps to a valid position regardless of how far off the real content
+    // the tap visually landed, so double-tap/triple-tap need their own
+    // "is this tap actually on real content" check the way the
+    // isTapOnExistingCursor path already does via isTouchXNearCursor.
+    const TAP_CONTENT_X_TOLERANCE = 24;
+    const isTouchOnRealContent = (touch, position) => {
+      if (!isTouchYInLineRow(touch, position.lineNumber)) return false;
+      const model = editor.getModel();
+      const lineMaxCol = model.getLineMaxColumn(position.lineNumber);
+      const lineEndPos = { lineNumber: position.lineNumber, column: lineMaxCol };
+      const coords = editor.getScrolledVisiblePosition(lineEndPos);
+      if (!coords) return false;
+      const domRect = domNode.getBoundingClientRect();
+      const lineEndX = domRect.left + coords.left;
+      // Within the line's text, or just past its end within tolerance.
+      return touch.clientX <= lineEndX + TAP_CONTENT_X_TOLERANCE;
+    };
+
     domNode.addEventListener("touchstart", (e) => {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
@@ -1340,7 +1362,7 @@ console.log(user);
           // Select the whole line that was tapped.
           e.preventDefault();
           const pos = posFromTouch(touch);
-          if (pos) {
+          if (pos && isTouchOnRealContent(touch, pos)) {
             const model = editor.getModel();
             editor.setSelection({
               startLineNumber: pos.lineNumber,
@@ -1358,7 +1380,7 @@ console.log(user);
           // Select the word under the tap.
           e.preventDefault();
           const pos = posFromTouch(touch);
-          if (pos) {
+          if (pos && isTouchOnRealContent(touch, pos)) {
             editor.setPosition(pos);
             editor.focus();
             const model = editor.getModel();
