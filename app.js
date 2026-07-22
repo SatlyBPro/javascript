@@ -1342,6 +1342,27 @@ console.log(user);
                 endLineNumber: pos.lineNumber,
                 endColumn: word.endColumn,
               });
+            } else {
+              // getWordAtPosition returns null on whitespace (whitespace
+              // isn't a "word"). Select the contiguous run of whitespace
+              // under the tap instead, so double-tapping a space still
+              // produces a real (non-empty) selection and the menu shows
+              // Cut/Copy/Paste rather than falling through to the
+              // no-selection Select All/Paste menu.
+              const lineContent = model.getLineContent(pos.lineNumber);
+              const idx = pos.column - 1;
+              if (idx >= 0 && idx < lineContent.length && /\s/.test(lineContent[idx])) {
+                let start = idx;
+                let end = idx + 1;
+                while (start > 0 && /\s/.test(lineContent[start - 1])) start--;
+                while (end < lineContent.length && /\s/.test(lineContent[end])) end++;
+                editor.setSelection({
+                  startLineNumber: pos.lineNumber,
+                  startColumn: start + 1,
+                  endLineNumber: pos.lineNumber,
+                  endColumn: end + 1,
+                });
+              }
             }
             shouldShowMenu = true;
           }
