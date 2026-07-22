@@ -1059,28 +1059,6 @@ console.log(user);
       return y >= contentTop && y < contentTop + lineHeight;
     };
 
-    // Same clamping problem as above, but for ANY tap that resolves to a
-    // real line/word/position via getTargetAtClientPoint - not just taps
-    // that land on the current cursor's row. A tap in the empty space
-    // below the last line of code (or above the first) still clamps to
-    // that nearest line, so without this check, double/triple-tapping
-    // well below a short file's only line of code would still select a
-    // word or line up in the code, nowhere near where the finger actually
-    // is. This checks the tap's Y against the actual vertical span of the
-    // whole document's content (from the top of line 1 to the bottom of
-    // the last line), so only a tap that visually falls somewhere within
-    // real code counts as landing "on" a line at all.
-    const isTouchYWithinDocumentContent = (touch) => {
-      const model = editor.getModel();
-      if (!model) return false;
-      const domRect = domNode.getBoundingClientRect();
-      const lineCount = model.getLineCount();
-      const contentTop = domRect.top + editor.getTopForLineNumber(1) - editor.getScrollTop();
-      const contentBottom = domRect.top + editor.getBottomForLineNumber(lineCount) - editor.getScrollTop();
-      const y = touch.clientY;
-      return y >= contentTop && y < contentBottom;
-    };
-
     domNode.addEventListener("touchstart", (e) => {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
@@ -1153,7 +1131,7 @@ console.log(user);
         // guard" comment further down for why.
         let shouldShowMenu = false;
 
-        if (isTripleTap && isTouchYWithinDocumentContent(touch)) {
+        if (isTripleTap) {
           // Select the whole line that was tapped.
           e.preventDefault();
           const pos = posFromTouch(touch);
@@ -1171,7 +1149,7 @@ console.log(user);
           tapCount = 0;
           lastTapTime = 0;
           lastTapPos = null;
-        } else if (isDoubleTap && isTouchYWithinDocumentContent(touch)) {
+        } else if (isDoubleTap) {
           // Select the word under the tap.
           e.preventDefault();
           const pos = posFromTouch(touch);
