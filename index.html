@@ -56,7 +56,7 @@
     <div class="brand">
       <span class="brand-badge">JS</span>
       <span class="brand-name">Runner</span>
-      <span class="brand-version" id="brandVersion">v1.6.8</span> <!--HERE IS THE VERSION HERE IS THE VERSION HERE IS THE VERSION HERE IS THE VERSION-->
+      <span class="brand-version" id="brandVersion">v1.7.0</span> <!--HERE IS THE VERSION HERE IS THE VERSION HERE IS THE VERSION HERE IS THE VERSION-->
       <span class="version-status" id="versionStatus" data-state="checking" title="Checking for updates…">
         <span class="version-status-dot"></span>
         <span class="version-status-label">Checking…</span>
@@ -141,6 +141,18 @@
       <input type="text" id="newFileName" placeholder="filename.js" autocomplete="off" autocapitalize="off" spellcheck="false">
     </div>
     <button class="popover-confirm" id="newFileConfirm">Create</button>
+  </div>
+
+  <!-- Custom confirm dialog (replaces window.confirm) -->
+  <div class="confirm-overlay" id="confirmOverlay" hidden>
+    <div class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="confirm-title" id="confirmTitle"></div>
+      <div class="confirm-message" id="confirmMessage"></div>
+      <div class="confirm-actions">
+        <button class="confirm-btn confirm-cancel" id="confirmCancelBtn">Cancel</button>
+        <button class="confirm-btn confirm-ok" id="confirmOkBtn">Confirm</button>
+      </div>
+    </div>
   </div>
 
 </div>

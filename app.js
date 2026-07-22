@@ -136,6 +136,47 @@ console.log(user);
   const newFilePopover = $("#newFilePopover");
   const newFileName = $("#newFileName");
   const newFileConfirm = $("#newFileConfirm");
+  const confirmOverlay = $("#confirmOverlay");
+  const confirmTitle = $("#confirmTitle");
+  const confirmMessage = $("#confirmMessage");
+  const confirmOkBtn = $("#confirmOkBtn");
+  const confirmCancelBtn = $("#confirmCancelBtn");
+
+  // ---------------------------------------------------------------
+  // Custom confirm dialog (replaces window.confirm)
+  // ---------------------------------------------------------------
+  let confirmResolve = null;
+
+  function showConfirm(title, message, okLabel) {
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+    confirmOkBtn.textContent = okLabel || "Confirm";
+    confirmOverlay.hidden = false;
+    confirmOkBtn.focus();
+    return new Promise(function (resolve) {
+      confirmResolve = resolve;
+    });
+  }
+
+  function resolveConfirm(result) {
+    confirmOverlay.hidden = true;
+    if (confirmResolve) {
+      const r = confirmResolve;
+      confirmResolve = null;
+      r(result);
+    }
+  }
+
+  confirmOkBtn.addEventListener("click", function () { resolveConfirm(true); });
+  confirmCancelBtn.addEventListener("click", function () { resolveConfirm(false); });
+  confirmOverlay.addEventListener("click", function (e) {
+    if (e.target === confirmOverlay) resolveConfirm(false);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (confirmOverlay.hidden) return;
+    if (e.key === "Escape") resolveConfirm(false);
+    if (e.key === "Enter") resolveConfirm(true);
+  });
 
   // ---------------------------------------------------------------
   // Console rendering
@@ -782,14 +823,22 @@ console.log(user);
     if (f && editor) f.code = editor.getValue();
   }
 
-  function closeFile(id) {
+  async function closeFile(id) {
     const idx = files.findIndex(function (f) { return f.id === id; });
     if (idx === -1 || files.length <= 1) return;
+    const f = files[idx];
+    if (f.code && f.code.trim()) {
+      const ok = await showConfirm('Close "' + f.name + '"?', "This can't be undone.", "Close");
+      if (!ok) return;
+    }
+    // Re-check in case files changed while the dialog was open.
+    const idx2 = files.findIndex(function (x) { return x.id === id; });
+    if (idx2 === -1 || files.length <= 1) return;
     if (activeFileId === id) saveCurrentEditorValue();
-    files.splice(idx, 1);
+    files.splice(idx2, 1);
     disposeModel(id);
     if (activeFileId === id) {
-      const next = files[Math.max(0, idx - 1)];
+      const next = files[Math.max(0, idx2 - 1)];
       activeFileId = next.id;
       const model = getOrCreateModel(next);
       editor.setModel(model);
@@ -831,10 +880,11 @@ console.log(user);
     if (e.key === "Escape") { newFilePopover.hidden = true; }
   });
 
-  function clearEditor() {
+  async function clearEditor() {
     if (!editor) return;
     if (!editor.getValue()) return;
-    if (!window.confirm("Clear the editor? This can't be undone.")) return;
+    const ok = await showConfirm("Clear editor?", "This can't be undone.", "Clear");
+    if (!ok) return;
     editor.setValue("");
     editor.focus();
     logSystem("Editor cleared.");
