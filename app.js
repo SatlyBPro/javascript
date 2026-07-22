@@ -1173,6 +1173,24 @@ console.log(user);
           tapCount = isCloseToLastTap ? tapCount + 1 : 1;
           lastTapTime = now;
           lastTapPos = { x: touch.clientX, y: touch.clientY };
+
+          // Safety net: Monaco has its own native double-tap word-selection
+          // gesture that can fire independently of (and slightly out of
+          // sync with) our own double-tap detection above. That can leave
+          // a word highlighted on screen without our isDoubleTap branch
+          // ever having run, so the Cut/Copy/Paste menu never appears even
+          // though there's a real selection sitting there. Whenever a tap
+          // falls through to here and we end up with a non-empty
+          // selection, always show the menu for it - a highlighted word
+          // should never be left without its menu.
+          const sel = editor.getSelection();
+          if (sel && !sel.isEmpty()) {
+            editor.focus();
+            showEditorTouchMenu(editor, touch.clientX, touch.clientY);
+            tapCount = 0;
+            lastTapTime = 0;
+            lastTapPos = null;
+          }
         }
       }
 
@@ -1267,6 +1285,12 @@ console.log(user);
         await navigator.clipboard.writeText(text);
         if (kind === "cut") {
           editor.executeEdits("touch-cut", [{ range: selection, text: "" }]);
+        } else {
+          // Copy doesn't touch the buffer, so the selection would
+          // otherwise stay highlighted after the menu closes. Collapse it
+          // to a cursor at the end of what was just copied, same as cut
+          // and paste both naturally end up doing.
+          editor.setPosition(selection.getEndPosition());
         }
       } else if (kind === "paste") {
         const clip = await navigator.clipboard.readText();
@@ -1275,6 +1299,7 @@ console.log(user);
     } catch (err) {
       console.warn("Clipboard action failed:", err);
     }
+    editor.focus();
   }
 
   // ---------------------------------------------------------------
