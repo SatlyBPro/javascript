@@ -1429,6 +1429,60 @@ console.log(user);
     setTimeout(() => menu.remove(), TOUCH_MENU_CLOSE_MS);
   }
 
+  // Selects the word/whitespace-run touching the cursor when nothing is
+  // currently selected, for the "Select" menu item. Prefers the token
+  // immediately to the LEFT of the cursor (matching "hello.world123|" ->
+  // selecting "world123"); falls back to the token on the right if there's
+  // nothing on the left (cursor at start of line, etc).
+  function selectAdjacentToken(editor) {
+    const pos = editor.getPosition();
+    if (!pos) return;
+    const model = editor.getModel();
+    const lineContent = model.getLineContent(pos.lineNumber);
+    const idx = pos.column - 1;
+
+    const leftChar = idx > 0 ? lineContent[idx - 1] : "";
+    const rightChar = idx < lineContent.length ? lineContent[idx] : "";
+
+    const isSpace = (ch) => /\s/.test(ch);
+
+    let probeCol = null;
+    if (leftChar && !isSpace(leftChar)) {
+      probeCol = idx; // 0-based index of the char left of cursor -> column idx+1's word
+    } else if (rightChar && !isSpace(rightChar)) {
+      probeCol = idx + 1;
+    }
+
+    if (probeCol !== null) {
+      const word = model.getWordAtPosition({ lineNumber: pos.lineNumber, column: probeCol + 1 });
+      if (word) {
+        editor.setSelection({
+          startLineNumber: pos.lineNumber,
+          startColumn: word.startColumn,
+          endLineNumber: pos.lineNumber,
+          endColumn: word.endColumn,
+        });
+        return;
+      }
+    }
+
+    // Whitespace (or nothing) adjacent on both sides - select the
+    // contiguous whitespace run instead, preferring the left side.
+    const wsIdx = leftChar && isSpace(leftChar) ? idx - 1 : (rightChar && isSpace(rightChar) ? idx : -1);
+    if (wsIdx >= 0) {
+      let start = wsIdx;
+      let end = wsIdx + 1;
+      while (start > 0 && isSpace(lineContent[start - 1])) start--;
+      while (end < lineContent.length && isSpace(lineContent[end])) end++;
+      editor.setSelection({
+        startLineNumber: pos.lineNumber,
+        startColumn: start + 1,
+        endLineNumber: pos.lineNumber,
+        endColumn: end + 1,
+      });
+    }
+  }
+
   function showEditorTouchMenu(editor, x, y) {
     const existing = document.getElementById("editorTouchMenu");
     if (existing) existing.remove();
@@ -1447,7 +1501,16 @@ console.log(user);
           ["Paste", () => execEditorAction(editor, "paste")],
         ]
       : [
-          ["Select All", () => editor.trigger("touch", "editor.action.selectAll")],
+          ["Select", () => {
+            selectAdjacentToken(editor);
+            editor.focus();
+            showEditorTouchMenu(editor, x, y);
+          }],
+          ["Select All", () => {
+            editor.trigger("touch", "editor.action.selectAll");
+            editor.focus();
+            showEditorTouchMenu(editor, x, y);
+          }],
           ["Paste", () => execEditorAction(editor, "paste")],
         ];
 
