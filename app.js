@@ -1444,12 +1444,19 @@ console.log(user);
 
           if (nativeSelectionDuringTouch) {
             const sel = editor.getSelection();
-            if (sel && !sel.isEmpty()) {
+            const pos = posFromTouch(touch);
+            if (sel && !sel.isEmpty() && pos && isTouchOnRealContent(touch, pos)) {
               editor.focus();
               shouldShowMenu = true;
               tapCount = 0;
               lastTapTime = 0;
               lastTapPos = null;
+            } else if (sel && !sel.isEmpty()) {
+              // Monaco's native gesture selected something even though the
+              // tap didn't visually land on real content (clamped far
+              // away) - undo that stray selection instead of leaving it
+              // highlighted with no menu to act on it.
+              editor.setPosition(sel.getEndPosition());
             }
           }
         }
