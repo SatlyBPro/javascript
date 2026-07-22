@@ -457,14 +457,6 @@ body {
 }
 
 #monacoContainer .monaco-editor,
-/* Monaco's built-in "toggle on-screen keyboard" button, which it shows
-   automatically on touch devices in the bottom-right corner of the editor.
-   Our own focus/blur handling already manages the keyboard, so this native
-   affordance is redundant clutter. */
-.monaco-editor .inputarea-toggle {
-  display: none !important;
-}
-
 #monacoContainer .overflow-guard,
 #monacoContainer .monaco-scrollable-element {
   touch-action: none;
