@@ -37,18 +37,8 @@
   const DEFAULT_CODE =
 `// Welcome to JS Runner.
 // Write JavaScript, then press Run (or Ctrl + Alt + N).
-
-function fibonacci(n) {
-  if (n <= 1) return n;
-  return fibonacci(n - 1) + fibonacci(n - 2);
-}
-
-for (let i = 0; i < 8; i++) {
-  console.log(\`fib(\${i}) =\`, fibonacci(i));
-}
-
-const user = { name: "Ada", skills: ["math", "logic", "code"] };
-console.log(user);
+// Click the trash bin icon above to clear the editor.
+// Click the one below to clear the console.
 `;
 
   let editor = null;
